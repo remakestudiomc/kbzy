@@ -143,7 +143,7 @@ const DEFAULT_SETTINGS = {
   fats: 70,
   carbs: 250,
   // Встроенный API-ключ — приложение работает сразу, без настройки
-  apiKey: 'AIzaSyD63_zO6G_pIDi9bQkQWWLJZhfeMsRr2lY',
+  apiKey: 'AQ.Ab8RN6Ia9AzNJarDQJDxYT3zYcP78gizLSwRz6njYtSYEOlTDQ',
   model: 'auto',
 };
 
