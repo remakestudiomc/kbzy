@@ -142,8 +142,9 @@ const DEFAULT_SETTINGS = {
   protein: 100,
   fats: 70,
   carbs: 250,
-  // Встроенный API-ключ — приложение работает сразу, без настройки
-  apiKey: 'AQ.Ab8RN6Ia9AzNJarDQJDxYT3zYcP78gizLSwRz6njYtSYEOlTDQ',
+  // URL Cloudflare Worker — нейросеть вызывается через него,
+  // реальный ключ Gemini хранится только на Cloudflare (секрет)
+  workerUrl: '',
   model: 'auto',
 };
 
@@ -172,9 +173,6 @@ function loadSettings() {
     if (!merged.model) {
       merged.model = 'auto';
     }
-
-    // Всегда используем встроенный API-ключ — приложение работает сразу
-    merged.apiKey = DEFAULT_SETTINGS.apiKey;
 
     return merged;
   } catch (e) {

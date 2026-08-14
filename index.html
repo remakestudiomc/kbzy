@@ -155,6 +155,11 @@
       <section class="card settings-section">
         <h2>🤖 Нейросеть</h2>
         <div class="field">
+          <label for="set-worker">URL облачного Worker</label>
+          <input type="url" id="set-worker" placeholder="https://kbzy-proxy.xxx.workers.dev" autocomplete="off">
+        </div>
+        <p class="hint-center">Ключ Gemini хранится только на Cloudflare Worker — он не виден в коде приложения. URL можно получить за 5 минут по инструкции в README.</p>
+        <div class="field" style="margin-top: 12px;">
           <label for="set-model">Модель</label>
           <select id="set-model">
             <option value="auto">🤖 Автоматически (рекомендуется)</option>
@@ -164,7 +169,6 @@
             <option value="gemini-2.0-flash-preview">Gemini 2.0 Flash Preview</option>
           </select>
         </div>
-        <p class="hint-center">AI-ключ уже встроен — нейросеть работает сразу, ничего настраивать не нужно</p>
       </section>
 
       <section class="card settings-section">

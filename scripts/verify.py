@@ -19,6 +19,7 @@ def main():
         'index.html', 'manifest.webmanifest', 'sw.js',
         'css/style.css',
         'js/db.js', 'js/api.js', 'js/app.js',
+        'worker/worker.js', 'CLOUDFLARE.md',
         'icons/icon-192.png', 'icons/icon-512.png',
         'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png',
         'README.md', 'scripts/generate_icons.py',
@@ -96,9 +97,17 @@ def main():
             errors.append('DB: отсутствует STORE_FAVORITES')
         if 'DBGetFavorites' not in dbjs or 'DBAddFavorite' not in dbjs:
             errors.append('DB: отсутствуют функции для избранного')
-        # Встроенный API-ключ (приложение работает сразу)
-        if 'apiKey' not in dbjs or "apiKey:" not in dbjs:
-            errors.append('DB: отсутствует встроенный API-ключ')
+        # URL Worker — приложение использует безопасный прокси
+        if 'workerUrl' not in dbjs:
+            errors.append('DB: отсутствует настройка workerUrl')
+
+    # Проверка, что ключ Gemini НЕ зашит в код приложения
+    for path in ['js/db.js', 'js/api.js', 'js/app.js', 'index.html']:
+        full = check(path)
+        if full:
+            content = open(full, encoding='utf-8-sig').read()
+            if 'AIza' in content or 'AQ.Ab8' in content:
+                errors.append(f'SECURITY: в {path} найден ключ Gemini — ключ должен быть только на Cloudflare')
 
     # Проверка наличия кнопки избранного в HTML
     if index_path:
