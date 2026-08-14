@@ -59,7 +59,7 @@ async function geminiAnalyzeFood(imageBase64, description, model) {
         if (errJson.error.includes('GEMINI_API_KEY')) {
           message = '❌ На Cloudflare не задан ключ GEMINI_API_KEY. Добавьте переменную в настройках Worker.';
         }
-        if (errJson.error.includes('на фото не обнаружена еда')) {
+        if (/на фото не обнаружена еда|нет еды|не является едой|не видно еды/i.test(errJson.error)) {
           message = 'На фото не обнаружена еда. Сделайте фото блюда и попробуйте снова.';
           const err = new Error(message);
           err.noFood = true;
@@ -83,6 +83,12 @@ async function geminiAnalyzeFood(imageBase64, description, model) {
 
   const result = await resp.json();
   if (result.error) {
+    // Если воркер вернул ошибку «нет еды» — помечаем специальным флагом
+    if (/на фото не обнаружена еда|нет еды|не является едой|не видно еды/i.test(result.error)) {
+      const err = new Error('На фото не обнаружена еда. Сделайте фото блюда и попробуйте снова.');
+      err.noFood = true;
+      throw err;
+    }
     throw new Error(result.error);
   }
 

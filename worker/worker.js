@@ -58,6 +58,7 @@ export default {
       .filter((v, i, a) => a.indexOf(v) === i);
 
     let lastError = null;
+    let noFoodDetected = false;
 
     for (const m of models) {
       try {
@@ -67,7 +68,15 @@ export default {
         }
       } catch (err) {
         lastError = err.message || String(err);
+        if (/не обнаружена еда|нет еды|не является едой|не видно еды/i.test(lastError)) {
+          noFoodDetected = true;
+        }
       }
+    }
+
+    // Если все модели сказали, что на фото нет еды — понятная короткая ошибка
+    if (noFoodDetected) {
+      return json({ error: 'На фото не обнаружена еда' }, 200, corsHeaders);
     }
 
     return json({ error: 'Не удалось проанализировать: ' + lastError }, 502, corsHeaders);

@@ -650,7 +650,7 @@ async function analyzePhoto() {
     let msg = err.message || 'Ошибка анализа';
 
     if (err.noFood) {
-      msg = 'На фото не обнаружена еда. Сделайте фото блюда и попробуйте снова.';
+      msg = 'На фото не видно еды. Попробуйте сфотографировать блюдо ещё раз.';
     } else if (err.rawStatus === 403 || err.rawStatus === 401 || /API key|permission|forbidden/i.test(msg)) {
       msg = '❌ Неверный API-ключ. Проверьте в настройках.';
     } else if (err.rawStatus === 429 || /quota|rate limit|resource exhausted/i.test(msg)) {
