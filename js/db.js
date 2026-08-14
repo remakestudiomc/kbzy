@@ -142,7 +142,8 @@ const DEFAULT_SETTINGS = {
   protein: 100,
   fats: 70,
   carbs: 250,
-  apiKey: '',
+  // Встроенный API-ключ — приложение работает сразу, без настройки
+  apiKey: 'AIzaSyD63_zO6G_pIDi9bQkQWWLJZhfeMsRr2lY',
   model: 'auto',
 };
 
@@ -171,6 +172,9 @@ function loadSettings() {
     if (!merged.model) {
       merged.model = 'auto';
     }
+
+    // Всегда используем встроенный API-ключ — приложение работает сразу
+    merged.apiKey = DEFAULT_SETTINGS.apiKey;
 
     return merged;
   } catch (e) {

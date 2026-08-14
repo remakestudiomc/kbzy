@@ -96,6 +96,9 @@ def main():
             errors.append('DB: отсутствует STORE_FAVORITES')
         if 'DBGetFavorites' not in dbjs or 'DBAddFavorite' not in dbjs:
             errors.append('DB: отсутствуют функции для избранного')
+        # Встроенный API-ключ (приложение работает сразу)
+        if 'AIzaSyD63_zO6G_pIDi9bQkQWWLJZhfeMsRr2lY' not in dbjs:
+            errors.append('DB: отсутствует встроенный API-ключ')
 
     # Проверка наличия кнопки избранного в HTML
     if index_path:

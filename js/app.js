@@ -59,11 +59,9 @@ const els = {
   setProtein: $('set-protein'),
   setFats: $('set-fats'),
   setCarbs: $('set-carbs'),
-  setApiKey: $('set-apikey'),
   setModel: $('set-model'),
   btnSaveSettings: $('btn-save-settings'),
   btnClearData: $('btn-clear-data'),
-  btnGetKey: $('btn-get-key'),
 
   // Навигация
   navAdd: $('nav-add'),
@@ -200,7 +198,6 @@ function bindEvents() {
   // Настройки
   els.btnSaveSettings.addEventListener('click', saveSettingsHandler);
   els.btnClearData.addEventListener('click', clearDataHandler);
-  els.btnGetKey.addEventListener('click', showKeyInstructions);
 }
 
 /* ============================================================
@@ -597,13 +594,7 @@ async function analyzePhoto() {
   if (!hasImage && !hasDesc) return;
 
   const { apiKey, model } = state.settings;
-  if (!apiKey) {
-    showToast('🔑 Сначала укажите API-ключ в настройках');
-    switchScreen('screen-settings');
-    closeFlow();
-    return;
-  }
-
+  // API-ключ уже встроен в приложение — просто используем его
   state.analyzing = true;
   showFlow('flow-loading');
 
@@ -707,7 +698,6 @@ function loadSettingsIntoForm() {
   els.setProtein.value = s.protein;
   els.setFats.value = s.fats;
   els.setCarbs.value = s.carbs;
-  els.setApiKey.value = s.apiKey;
   els.setModel.value = s.model;
 }
 
@@ -737,7 +727,6 @@ function saveSettingsHandler() {
     protein: protein || 0,
     fats: fats || 0,
     carbs: carbs || 0,
-    apiKey: els.setApiKey.value.trim(),
     model: els.setModel.value,
   };
 
@@ -761,20 +750,6 @@ async function clearDataHandler() {
   } catch (e) {
     showToast('⚠️ Не удалось стереть данные');
   }
-}
-
-function showKeyInstructions() {
-  const text = [
-    '1. Откройте https://aistudio.google.com/apikey',
-    '2. Войдите с аккаунтом Google',
-    '3. Нажмите «Create API key»',
-    '4. Скопируйте ключ (начинается с AIza...)',
-    '5. Вставьте его в поле API-ключ и сохраните',
-    '',
-    'Бесплатный тариф Gemini Flash — ~1500 запросов в день.',
-  ].join('\n');
-
-  alert(text);
 }
 
 /* ============================================================
