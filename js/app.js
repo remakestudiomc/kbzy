@@ -11,6 +11,7 @@ const state = {
   pendingDescription: '',
   analyzing: false,
   favorites: [],
+  editingEntry: null,
 };
 
 let toastTimer = null;
@@ -88,6 +89,7 @@ const els = {
   btnAnalyze: $('btn-analyze'),
 
   // Результат
+  resultTitle: $('result-title'),
   resultPhoto: $('result-photo'),
   resultDateNote: $('result-date-note'),
   resultName: $('result-name'),
@@ -355,11 +357,18 @@ function renderEntries(entries) {
         ${entry.weight ? `<span><b>${Math.round(entry.weight)}</b> г</span>` : ''}
       </div>
       <div class="entry-other-row">
+        <button class="entry-edit-btn" data-action="edit">✏️ Изменить</button>
         <button class="entry-del-btn" data-action="del">Удалить</button>
         ${time ? `<span class="entry-time">🕐 ${time}</span>` : ''}
       </div>
     `;
 
+    card.querySelectorAll('[data-action="edit"]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        editEntry(entry.id);
+      });
+    });
     card.querySelectorAll('[data-action="del"]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -548,11 +557,14 @@ function closeFlow() {
 }
 
 function resetFlow() {
+  state.editingEntry = null;
   state.pendingImage = null;
   state.pendingDescription = '';
   els.addDescription.value = '';
   els.cameraInput.value = '';
   els.fileInput.value = '';
+  els.resultTitle.textContent = 'Результат';
+  els.btnSaveFavorite.classList.remove('hidden');
   resetPhoto();
   updateDescCount();
   showFlow('flow-capture');
@@ -671,6 +683,45 @@ function goBackToCapture() {
   updateAnalyzeButton();
 }
 
+async function editEntry(id) {
+  let entries = [];
+  try {
+    entries = await DBGetAllEntries();
+  } catch (e) {
+    showToast('⚠️ Не удалось загрузить запись');
+    return;
+  }
+  const entry = entries.find((e) => e.id === id);
+  if (!entry) {
+    showToast('⚠️ Запись не найдена');
+    return;
+  }
+
+  state.editingEntry = entry;
+  state.pendingImage = entry.image || '';
+
+  els.resultName.value = entry.name || '';
+  els.resultWeight.value = entry.weight || '';
+  els.resultCal.value = entry.kcal || '';
+  els.resultProtein.value = entry.protein || '';
+  els.resultFats.value = entry.fats || '';
+  els.resultCarbs.value = entry.carbs || '';
+  els.resultDesc.value = entry.description || '';
+
+  els.resultTitle.textContent = 'Редактирование';
+  if (entry.image) {
+    els.resultPhoto.src = entry.image;
+    els.resultPhoto.classList.remove('hidden');
+  } else {
+    els.resultPhoto.removeAttribute('src');
+    els.resultPhoto.classList.add('hidden');
+  }
+
+  els.resultDateNote.textContent = 'Редактируем: ' + formatDateRu(entry.date);
+  els.btnSaveFavorite.classList.add('hidden');
+  showFlow('flow-result');
+}
+
 async function saveResult() {
   const name = els.resultName.value.trim();
   const weight = parseFloat(els.resultWeight.value);
@@ -697,8 +748,16 @@ async function saveResult() {
   };
 
   try {
-    await DBAddEntry(entry);
-    showToast('✓ Добавлено в дневник');
+    if (state.editingEntry) {
+      entry.id = state.editingEntry.id;
+      entry.createdAt = state.editingEntry.createdAt || Date.now();
+      entry.date = state.editingEntry.date;
+      await DBUpdateEntry(entry);
+      showToast('✓ Запись обновлена');
+    } else {
+      await DBAddEntry(entry);
+      showToast('✓ Добавлено в дневник');
+    }
     closeFlow();
     refreshDiary();
   } catch (e) {
