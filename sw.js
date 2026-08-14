@@ -4,7 +4,7 @@
    кеш используем только если сеть недоступна (офлайн).
    ============================================================ */
 
-const CACHE_NAME = 'kbzy-cache-v10';
+const CACHE_NAME = 'kbzy-cache-v11';
 
 const CORE_ASSETS = [
   './',
@@ -14,7 +14,7 @@ const CORE_ASSETS = [
   './js/db.js',
   './js/api.js',
   './js/app.js',
-  './logo.jpg',
+  './logo.png',
   './icons/favicon-32.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
