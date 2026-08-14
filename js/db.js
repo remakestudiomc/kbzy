@@ -46,25 +46,50 @@ function openDB() {
 function tx(storeName, mode, fn) {
   return openDB().then((db) => {
     return new Promise((resolve, reject) => {
-      const t = db.transaction(storeName, mode);
-      const store = t.objectStore(storeName);
-      let result;
+      let t;
+      let request;
       try {
-        const req = fn(store);
-        // Если fn вернул IDBRequest — забираем result из него
-        if (req && typeof req.onsuccess === 'function' && 'result' in req) {
-          req.onsuccess = () => { result = req.result; };
-          req.onerror = () => reject(req.error);
-        }
+        t = db.transaction(storeName, mode);
+        request = fn(t.objectStore(storeName));
       } catch (err) {
-        reject(err);
+        // Если store не найден — база повреждена, восстанавливаем
+        recoverDB().then(() => reject(err), () => reject(err));
         return;
       }
-      t.oncomplete = () => resolve(result);
-      t.onerror = () => reject(t.error);
-      t.onabort = () => reject(t.error);
+
+      let result;
+
+      // Если fn вернул IDBRequest (getAll, add, delete и т.д.) — читаем его result
+      if (request && typeof request.addEventListener === 'function') {
+        request.addEventListener('success', () => { result = request.result; });
+        request.addEventListener('error', () => {
+          // При ошибке запроса — восстанавливаем базу
+          recoverDB();
+          reject(request.error);
+        });
+      }
+
+      t.addEventListener('complete', () => resolve(result));
+      t.addEventListener('error', () => {
+        recoverDB();
+        reject(t.error);
+      });
+      t.addEventListener('abort', () => {
+        recoverDB();
+        reject(t.error);
+      });
     });
   });
+}
+
+/* ---------- Автовосстановление повреждённой базы ---------- */
+
+async function recoverDB() {
+  // Сбрасываем кеш промиса и удаляем базу, чтобы пересоздать с нуля
+  dbPromise = null;
+  try {
+    indexedDB.deleteDatabase(DB_NAME);
+  } catch (e) { /* ignore */ }
 }
 
 /* ---------- Записи дневника ---------- */

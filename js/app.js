@@ -25,7 +25,6 @@ const els = {
   navBtns: document.querySelectorAll('.nav-btn'),
 
   // Бренд / шапка
-  btnShare: $('btn-share'),
 
   // Дневник
   dateTitle: $('date-title'),
@@ -141,16 +140,6 @@ function bindEvents() {
   });
   els.navAdd.addEventListener('click', openAddFlow);
   els.btnAddSimple.addEventListener('click', openAddFlow);
-
-  // Поделиться
-  els.btnShare.addEventListener('click', () => {
-    const text = `Сегодня я набрал(а) ${els.kcalNow.textContent} / ${els.kcalGoal.textContent} ккал — приложение КБЖУ Дневник`;
-    if (navigator.share) {
-      navigator.share({ title: 'КБЖУ Дневник', text }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(text).then(() => showToast('✓ Результат скопирован')).catch(() => {});
-    }
-  });
 
   // Даты
   els.btnPrevDay.addEventListener('click', () => { state.currentDate = addDays(state.currentDate, -1); refreshDiary(); });

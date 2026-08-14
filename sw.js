@@ -1,8 +1,10 @@
 /* ============================================================
    Service Worker — офлайн-режим и установка PWA
+   Стратегия: network-first — всегда берём свежую версию с сервера,
+   кеш используем только если сеть недоступна (офлайн).
    ============================================================ */
 
-const CACHE_NAME = 'kbzy-cache-v4';
+const CACHE_NAME = 'kbzy-cache-v5';
 
 const CORE_ASSETS = [
   './',
@@ -21,7 +23,9 @@ const CORE_ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(CORE_ASSETS))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -30,43 +34,46 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(
+        keys
+          .filter((k) => k !== CACHE_NAME)
+          .map((k) => caches.delete(k))
+      ))
       .then(() => self.clients.claim())
   );
 });
 
-/* ---------- Запросы ---------- */
+/* ---------- Запросы: network-first ---------- */
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
-  // Не кешируем запросы к API
+  // Не кешируем запросы к API Gemini
   if (request.url.includes('generativelanguage.googleapis.com')) return;
 
   // Только GET
   if (request.method !== 'GET') return;
 
-  // Стратегия: cache-first, fallback на сеть, затем на кеш
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-
-      return fetch(request)
-        .then((response) => {
-          // Кешируем успешные ответы
-          if (response && response.status === 200 && response.type === 'basic') {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(() => {
-          // Офлайн: для навигации возвращаем index.html
+    fetch(request)
+      .then((response) => {
+        // Если ответ успешный — обновляем кеш
+        if (response && response.status === 200 && response.type === 'basic') {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
+        return response;
+      })
+      .catch(() => {
+        // Офлайн: берём из кеша
+        return caches.match(request).then((cached) => {
+          if (cached) return cached;
+          // Навигация офлайн — index.html
           if (request.mode === 'navigate') {
             return caches.match('./index.html');
           }
           return new Response('Офлайн-режим', { status: 503, statusText: 'Offline' });
         });
-    })
+      })
   );
 });

@@ -103,6 +103,11 @@ def main():
             html = fh.read()
         if 'btn-save-favorite' not in html or 'favorites-list' not in html:
             errors.append('INDEX: отсутствуют элементы избранного (btn-save-favorite / favorites-list)')
+        # Кнопка "Поделиться" должна быть удалена
+        if 'btn-share' in html:
+            errors.append('INDEX: кнопка btn-share должна быть удалена')
+        if 'btn-share' in open(os.path.join(BASE, 'js/app.js'), encoding='utf-8-sig').read():
+            errors.append('APP: обработчик btn-share должен быть удалён')
 
     # Вывод
     if errors:
