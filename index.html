@@ -7,7 +7,7 @@
   <meta name="description" content="Дневник питания: считайте КБЖУ по фото с помощью нейросети">
   <title>КБЖУ Дневник</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,7 +23,7 @@
     <header class="app-header">
       <div class="header-top">
         <div class="brand">
-          <span class="brand-logo">🥗</span>
+          <span class="brand-logo"><img src="logo.jpg" alt="КБЖУ Дневник"></span>
           <div>
             <h1 class="brand-name">КБЖУ Дневник</h1>
             <p class="brand-tag">с умным подсчётом</p>
@@ -154,11 +154,7 @@
 
       <section class="card settings-section">
         <h2>🤖 Нейросеть</h2>
-        <div class="field">
-          <label for="set-worker">URL облачного Worker</label>
-          <input type="url" id="set-worker" placeholder="https://kbzy-proxy.xxx.workers.dev" autocomplete="off">
-        </div>
-        <p class="hint-center">Ключ Gemini хранится только на Cloudflare Worker — он не виден в коде приложения. URL можно получить за 5 минут по инструкции в README.</p>
+        <p class="hint-center">Готово — нейросеть подключена автоматически. Ключ Gemini хранится только на Cloudflare Worker и не виден в коде приложения.</p>
         <div class="field" style="margin-top: 12px;">
           <label for="set-model">Модель</label>
           <select id="set-model">

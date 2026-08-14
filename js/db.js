@@ -142,9 +142,10 @@ const DEFAULT_SETTINGS = {
   protein: 100,
   fats: 70,
   carbs: 250,
-  // URL Cloudflare Worker — нейросеть вызывается через него,
-  // реальный ключ Gemini хранится только на Cloudflare (секрет)
-  workerUrl: '',
+// URL Cloudflare Worker — нейросеть вызывается через него,
+// реальный ключ Gemini хранится только на Cloudflare (секрет)
+// Захардкожен: настраивать больше не нужно
+workerUrl: 'https://kbzy-proxy.roma-oreshkin-01.workers.dev',
   model: 'auto',
 };
 

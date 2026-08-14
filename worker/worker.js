@@ -17,11 +17,6 @@
 
 export default {
   async fetch(request, env) {
-    // Только POST
-    if (request.method !== 'POST') {
-      return json({ error: 'Метод не поддерживается' }, 405);
-    }
-
     // Простой способ разрешить запросы с любых сайтов (CORS)
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
@@ -29,9 +24,15 @@ export default {
       'Access-Control-Allow-Headers': 'Content-Type',
     };
 
-    // Предварительный запрос браузера
+    // ВАЖНО: CORS-preflight (OPTIONS) обрабатываем ДО проверки метода,
+    // иначе браузер заблокирует запрос как "Не удалось подключиться к Worker"
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
+      return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
+    // Только POST
+    if (request.method !== 'POST') {
+      return json({ error: 'Метод не поддерживается' }, 405, corsHeaders);
     }
 
     const apiKey = env.GEMINI_API_KEY;

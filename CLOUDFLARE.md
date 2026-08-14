@@ -47,6 +47,36 @@
 
 Теперь нейросеть работает, а ключ спрятан на Cloudflare.
 
+## ⚠️ ВАЖНО: если Worker уже развёрнут ранее
+
+Если вы разворачивали Worker **до этой версии** и получаете ошибку
+«Не удалось подключиться к облачному Worker» — проблема в CORS-preflight
+(браузер блокирует запрос из-за неправильного ответа на OPTIONS).
+
+Чтобы исправить, **обновите код воркера на Cloudflare**:
+
+1. Откройте **https://dash.cloudflare.com** → Workers & Pages → `kbzy-proxy`
+2. Нажмите **Edit Code**
+3. **Удалите весь старый код**, вставьте **текущее** содержимое файла **`worker/worker.js`** из проекта
+4. Нажмите **Deploy**
+5. Затем проверьте по разделу «Проверка» ниже
+
+## 🔍 Как проверить, что всё работает
+
+Откройте браузер (Chrome/Edge) → **F12** → вкладка **Console** → вставьте команду:
+
+```js
+fetch('ВАШ_URL_ВОРКЕРА', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ image: '', description: 'гречка с курицей' })
+}).then(r => r.json()).then(d => console.log('Worker OK:', d)).catch(e => console.error('Worker ERROR:', e));
+```
+
+- Если в консоли появится `Worker OK: { ... }` — всё работает, попробуйте снова записать в дневник.
+- Если `Worker ERROR` или `TypeError: Failed to fetch` — URL воркера недоступен или CORS всё ещё не починен (повторите обновление кода выше).
+- Если ответ содержит `API key not valid` / `403` — ключ `GEMINI_API_KEY` на Cloudflare неверный или отозван, обновите его в Settings → Variables.
+
 ## 🔒 Почему это безопасно
 
 | | Ключ в коде (старый) | Ключ на Cloudflare (новый) |

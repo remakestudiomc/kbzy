@@ -5,27 +5,20 @@
    - Worker вызывает Gemini и возвращает JSON с КБЖУ
    ============================================================ */
 
+// Постоянный URL Cloudflare Worker — больше не настраивается в приложении
+const WORKER_URL = 'https://kbzy-proxy.roma-oreshkin-01.workers.dev';
+
 /**
  * Анализ блюда через Cloudflare Worker (безопасно)
  * @param {string} imageBase64 - data URL изображения (или null)
  * @param {string} description - текстовое описание (или пусто)
- * @param {string} workerUrl - URL Cloudflare Worker
  * @param {string} model - выбранная модель ('auto' или конкретная)
  * @returns {Promise<{name, weight, kcal, protein, fats, carbs, description}>}
  */
-async function geminiAnalyzeFood(imageBase64, description, workerUrl, model) {
+async function geminiAnalyzeFood(imageBase64, description, model) {
   const hasImage = !!(imageBase64 && String(imageBase64).startsWith('data:image'));
   if (!hasImage && !description) {
     throw new Error('Добавьте фото блюда или введите описание');
-  }
-
-  if (!workerUrl) {
-    throw new Error('Не указан URL облачного Worker. Откройте ⚙️ Настройки и укажите его.');
-  }
-
-  // Проверяем, что workerUrl похож на адрес Cloudflare
-  if (!/^https:\/\/.+\.workers\.dev/.test(workerUrl) && !/^https:\/\/.+\/.+/.test(workerUrl)) {
-    throw new Error('URL Worker выглядит некорректно. Проверьте в настройках.');
   }
 
   // Если есть фото — сжимаем перед отправкой
@@ -47,13 +40,13 @@ async function geminiAnalyzeFood(imageBase64, description, workerUrl, model) {
 
   let resp;
   try {
-    resp = await fetch(workerUrl, {
+    resp = await fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
   } catch (e) {
-    throw new Error('Не удалось подключиться к облачному Worker. Проверьте интернет и URL в настройках.');
+    throw new Error('Не удалось подключиться к облачному Worker. Проверьте интернет.');
   }
 
   if (!resp.ok) {

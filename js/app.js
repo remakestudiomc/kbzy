@@ -59,7 +59,6 @@ const els = {
   setProtein: $('set-protein'),
   setFats: $('set-fats'),
   setCarbs: $('set-carbs'),
-  setWorker: $('set-worker'),
   setModel: $('set-model'),
   btnSaveSettings: $('btn-save-settings'),
   btnClearData: $('btn-clear-data'),
@@ -133,8 +132,8 @@ async function init() {
    ============================================================ */
 
 function bindEvents() {
-  // Навигация
-  els.navBtns.forEach((btn) => {
+  // Навигация — нижние и верхние кнопки
+  document.querySelectorAll('[data-screen]').forEach((btn) => {
     btn.addEventListener('click', () => switchScreen(btn.dataset.screen));
   });
   els.navAdd.addEventListener('click', openAddFlow);
@@ -594,7 +593,7 @@ async function analyzePhoto() {
   const hasDesc = !!els.addDescription.value.trim();
   if (!hasImage && !hasDesc) return;
 
-  const { workerUrl, model } = state.settings;
+  const { model } = state.settings;
   state.analyzing = true;
   showFlow('flow-loading');
 
@@ -602,7 +601,6 @@ async function analyzePhoto() {
     const result = await geminiAnalyzeFood(
       state.pendingImage,
       state.pendingDescription,
-      workerUrl,
       model
     );
 
@@ -698,7 +696,6 @@ function loadSettingsIntoForm() {
   els.setProtein.value = s.protein;
   els.setFats.value = s.fats;
   els.setCarbs.value = s.carbs;
-  els.setWorker.value = s.workerUrl || '';
   els.setModel.value = s.model;
 }
 
@@ -728,7 +725,6 @@ function saveSettingsHandler() {
     protein: protein || 0,
     fats: fats || 0,
     carbs: carbs || 0,
-    workerUrl: els.setWorker.value.trim(),
     model: els.setModel.value,
   };
 
