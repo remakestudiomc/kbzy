@@ -262,13 +262,14 @@ function renderTotals(entries) {
   totals.fats = Math.round(totals.fats * 10) / 10;
   totals.carbs = Math.round(totals.carbs * 10) / 10;
 
-  els.kcalNow.textContent = Math.round(totals.kcal);
+  // Плавная анимация чисел
+  animateNumber(els.kcalNow, Math.round(totals.kcal));
   els.kcalGoal.textContent = s.kcal;
-  els.proteinNow.textContent = Math.round(totals.protein);
+  animateNumber(els.proteinNow, Math.round(totals.protein));
   els.proteinGoal.textContent = s.protein;
-  els.fatsNow.textContent = Math.round(totals.fats);
+  animateNumber(els.fatsNow, Math.round(totals.fats));
   els.fatsGoal.textContent = s.fats;
-  els.carbsNow.textContent = Math.round(totals.carbs);
+  animateNumber(els.carbsNow, Math.round(totals.carbs));
   els.carbsGoal.textContent = s.carbs;
 
   const remain = s.kcal - totals.kcal;
@@ -283,7 +284,26 @@ function renderTotals(entries) {
   const pct = s.kcal > 0 ? Math.min(totals.kcal / s.kcal, 1) : 0;
   const CIRC = 326.7;
   els.kcalRing.style.strokeDashoffset = CIRC - CIRC * pct;
-  els.kcalRing.style.stroke = pct > 1 ? '#ef4444' : '#f97316';
+  els.kcalRing.style.stroke = pct > 1 ? '#ef4444' : '#4f46e5';
+}
+
+function animateNumber(el, target) {
+  if (!el) return;
+  const current = parseFloat(el.textContent.replace(/\s/g, '')) || 0;
+  if (current === target) return;
+
+  const start = performance.now();
+  const duration = 500;
+  const from = current;
+
+  function step(now) {
+    const t = Math.min((now - start) / duration, 1);
+    // easeOutCubic
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = Math.round(from + (target - from) * eased);
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
 }
 
 function setBar(bar, value, goal) {

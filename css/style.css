@@ -1,5 +1,6 @@
 /* ============================================================
-   КБЖУ Дневник — профессиональный дизайн
+   КБЖУ Дневник — премиальный минимализм
+   Без градиентов, профессиональная палитра (indigo)
    ============================================================ */
 
 * {
@@ -10,22 +11,22 @@
 }
 
 :root {
-  --bg: #f5f6fa;
-  --bg-grad: linear-gradient(160deg, #f8f9fd 0%, #eef0f7 100%);
+  --bg: #f7f8fa;
   --card: #ffffff;
-  --text: #1a1d2e;
-  --text-2: #8289a1;
-  --border: #e9ebf2;
-  --primary: #f97316;
-  --primary-dark: #ea6a0b;
-  --primary-light: #fff3e8;
+  --text: #0f172a;
+  --text-2: #64748b;
+  --text-3: #94a3b8;
+  --border: #e7eaf0;
+  --primary: #4f46e5;
+  --primary-dark: #4338ca;
+  --primary-light: #eef2ff;
   --accent-blue: #3b82f6;
   --accent-green: #10b981;
   --accent-yellow: #f59e0b;
   --danger: #ef4444;
-  --shadow-sm: 0 2px 12px rgba(26, 29, 46, 0.05);
-  --shadow-md: 0 6px 24px rgba(26, 29, 46, 0.08);
-  --shadow-lg: 0 12px 40px rgba(26, 29, 46, 0.12);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 6px 20px rgba(15, 23, 42, 0.07);
+  --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.14);
   --radius: 18px;
   --radius-sm: 12px;
   font-size: 16px;
@@ -43,6 +44,8 @@ body {
   color: var(--text);
   -webkit-user-select: none;
   user-select: none;
+  font-feature-settings: 'tnum' 1, 'cv05' 1;
+  -webkit-font-smoothing: antialiased;
 }
 
 #app {
@@ -51,7 +54,7 @@ body {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  background: var(--bg-grad);
+  background: var(--bg);
   position: relative;
 }
 
@@ -78,6 +81,32 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .hidden { display: none !important; }
 
+/* ============ Анимации ============ */
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 8px 24px rgba(79, 70, 229, 0.28); }
+  50%      { box-shadow: 0 8px 32px rgba(79, 70, 229, 0.42); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ============ Экраны ============ */
 .screen {
   display: none;
@@ -88,7 +117,10 @@ input[type="number"]::-webkit-outer-spin-button {
   scrollbar-width: none;
 }
 .screen::-webkit-scrollbar { display: none; }
-.screen.active { display: block; }
+.screen.active {
+  display: block;
+  animation: fade-in 0.22s ease;
+}
 
 .screen-body {
   margin-top: 4px;
@@ -99,7 +131,7 @@ input[type="number"]::-webkit-outer-spin-button {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--bg-grad);
+  background: var(--bg);
   padding: calc(14px + env(safe-area-inset-top)) 0 10px;
 }
 
@@ -120,12 +152,13 @@ input[type="number"]::-webkit-outer-spin-button {
   width: 42px;
   height: 42px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #f97316, #fbbf24);
+  background: var(--card);
+  border: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.5rem;
-  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -141,10 +174,8 @@ input[type="number"]::-webkit-outer-spin-button {
   font-size: 1.05rem;
   font-weight: 800;
   line-height: 1.2;
-  background: linear-gradient(135deg, #f97316, #f59e0b);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text);
+  letter-spacing: -0.02em;
 }
 
 .brand-tag {
@@ -166,6 +197,7 @@ input[type="number"]::-webkit-outer-spin-button {
   justify-content: center;
   font-size: 1.2rem;
   flex-shrink: 0;
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 .icon-btn:active { transform: scale(0.9); }
 
@@ -190,7 +222,9 @@ input[type="number"]::-webkit-outer-spin-button {
   box-shadow: var(--shadow-sm);
   font-size: 1.6rem;
   font-weight: 700;
+  transition: transform 0.15s ease;
 }
+.nav-arrow:active { transform: scale(0.88); }
 
 .date-btn {
   flex: 1;
@@ -202,13 +236,16 @@ input[type="number"]::-webkit-outer-spin-button {
   background: var(--card);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s;
 }
+.date-btn:active { border-color: var(--primary); }
 .date-title { font-weight: 800; font-size: 1.05rem; }
 .date-sub { font-size: 0.76rem; color: var(--text-2); margin-top: 2px; }
 
 .page-title {
   font-size: 1.3rem;
   font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .settings-title {
@@ -223,6 +260,7 @@ input[type="number"]::-webkit-outer-spin-button {
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border);
+  animation: fade-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* ============ Hero-карточка калорий ============ */
@@ -232,8 +270,9 @@ input[type="number"]::-webkit-outer-spin-button {
   gap: 18px;
   padding: 18px;
   margin-bottom: 12px;
-  background: linear-gradient(135deg, #fff 0%, #fff8f2 50%, #fff3ed 100%);
-  border: 1px solid #ffdcc4;
+  background: var(--card);
+  border: 1px solid var(--border);
+  animation-delay: 0.02s;
 }
 
 .hero-ring {
@@ -251,19 +290,18 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .ring-bg {
   fill: none;
-  stroke: #f1e3d8;
+  stroke: #eef0f5;
   stroke-width: 10;
 }
 
 .ring-fill {
   fill: none;
-  stroke: url(#gradient);
-  stroke: #f97316;
+  stroke: var(--primary);
   stroke-width: 10;
   stroke-linecap: round;
   stroke-dasharray: 326.7;
   stroke-dashoffset: 326.7;
-  transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: stroke-dashoffset 0.9s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .ring-center {
@@ -279,6 +317,7 @@ input[type="number"]::-webkit-outer-spin-button {
   font-size: 1.5rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
 .ring-label {
@@ -326,7 +365,7 @@ input[type="number"]::-webkit-outer-spin-button {
 /* Бары прогресса */
 .bar {
   height: 8px;
-  background: #f0eff6;
+  background: #f0f1f5;
   border-radius: 999px;
   overflow: hidden;
 }
@@ -336,9 +375,9 @@ input[type="number"]::-webkit-outer-spin-button {
   height: 100%;
   border-radius: 999px;
   width: 0%;
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.bar-fill.kcal { background: linear-gradient(90deg, #f97316, #fbbf24); }
+.bar-fill.kcal { background: var(--primary); }
 .bar-fill.protein { background: var(--accent-blue); }
 .bar-fill.fats { background: var(--accent-yellow); }
 .bar-fill.carbs { background: var(--accent-green); }
@@ -354,9 +393,15 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .macro-card {
   padding: 14px 12px;
-  transition: transform 0.15s;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+  animation-delay: 0.06s;
 }
-.macro-card:active { transform: scale(0.97); }
+.macro-card:nth-child(2) { animation-delay: 0.1s; }
+.macro-card:nth-child(3) { animation-delay: 0.14s; }
+.macro-card:active {
+  transform: translateY(-1px) scale(0.98);
+  box-shadow: var(--shadow-lg);
+}
 
 .protein-card { border-top: 3px solid var(--accent-blue); }
 .fats-card { border-top: 3px solid var(--accent-yellow); }
@@ -382,10 +427,13 @@ input[type="number"]::-webkit-outer-spin-button {
 .macro-nums b {
   font-size: 1.35rem;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 .macro-slash {
   font-size: 0.72rem;
   color: var(--text-2);
+  display: flex;
+  gap: 2px;
 }
 
 /* ============ Секции ============ */
@@ -398,6 +446,7 @@ input[type="number"]::-webkit-outer-spin-button {
 .section-head h2 {
   font-size: 1.1rem;
   font-weight: 800;
+  letter-spacing: -0.02em;
 }
 .section-sub {
   font-size: 0.76rem;
@@ -410,27 +459,34 @@ input[type="number"]::-webkit-outer-spin-button {
 
 /* ============ Кнопки ============ */
 .btn-add-simple {
-  background: linear-gradient(135deg, #f97316, #fb923c);
+  background: var(--primary);
   color: #fff;
   font-weight: 700;
   padding: 9px 16px;
   font-size: 0.88rem;
   border-radius: 999px;
-  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
 }
-.btn-add-simple:active { transform: scale(0.95); }
+.btn-add-simple:active {
+  transform: scale(0.94);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
+}
 
 .primary {
-  background: linear-gradient(135deg, #f97316, #f59e0b);
+  background: var(--primary);
   color: #fff;
   font-weight: 700;
   border-radius: 14px;
   padding: 14px 20px;
   font-size: 1rem;
-  box-shadow: 0 8px 20px rgba(249, 115, 22, 0.3);
-  transition: transform 0.1s;
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.28);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s;
 }
-.primary:active { transform: scale(0.97); }
+.primary:active {
+  transform: scale(0.97) translateY(1px);
+  box-shadow: 0 3px 10px rgba(79, 70, 229, 0.22);
+}
 .primary:disabled {
   background: #d8dae3;
   color: #fff;
@@ -447,21 +503,26 @@ input[type="number"]::-webkit-outer-spin-button {
   border-radius: 14px;
   padding: 13px 20px;
   font-size: 0.95rem;
+  transition: background 0.2s ease, transform 0.15s ease;
 }
-.ghost:active { background: #ffe8d6; }
+.ghost:active { background: #e2e8ff; transform: scale(0.97); }
 .ghost.big { padding: 15px 20px; font-size: 1rem; }
 
 .fav-btn {
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  background: var(--accent-green);
   color: #fff;
   font-weight: 700;
   border-radius: 14px;
   padding: 14px 20px;
   font-size: 1rem;
   margin-top: 8px;
-  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.28);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
 }
-.fav-btn:active { transform: scale(0.97); }
+.fav-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.22);
+}
 
 .btn-key {
   width: 100%;
@@ -476,9 +537,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 .btn-key:active { background: #eceef5; }
 
-.danger {
-  color: var(--danger);
-}
+.danger { color: var(--danger); }
 .danger.ghost {
   background: #fef2f2;
   color: var(--danger);
@@ -490,7 +549,9 @@ input[type="number"]::-webkit-outer-spin-button {
   border-radius: 14px;
   padding: 13px;
   font-weight: 700;
+  transition: background 0.2s ease;
 }
+.danger.full:active { background: #fde2e2; }
 
 /* ============ Формы ============ */
 .field { margin-bottom: 12px; }
@@ -516,14 +577,14 @@ input[type="number"]::-webkit-outer-spin-button {
   background: var(--bg);
   color: var(--text);
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 .field input:focus,
 .field textarea:focus,
 .field select:focus {
   border-color: var(--primary);
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 .field textarea { resize: none; }
 
@@ -543,10 +604,13 @@ input[type="number"]::-webkit-outer-spin-button {
   padding: 16px;
   margin-bottom: 14px;
 }
+.settings-section:nth-child(2) { animation-delay: 0.05s; }
+.settings-section:nth-child(3) { animation-delay: 0.1s; }
 .settings-section h2 {
   font-size: 1.02rem;
   font-weight: 800;
   margin-bottom: 14px;
+  letter-spacing: -0.01em;
 }
 
 .help-list {
@@ -576,6 +640,12 @@ input[type="number"]::-webkit-outer-spin-button {
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
+  animation: fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+.entry-card:active {
+  transform: scale(0.99);
+  box-shadow: var(--shadow-md);
 }
 
 .entry-main {
@@ -623,6 +693,7 @@ input[type="number"]::-webkit-outer-spin-button {
   color: var(--primary);
   font-size: 1.05rem;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .entry-del {
@@ -630,6 +701,7 @@ input[type="number"]::-webkit-outer-spin-button {
   color: var(--text-2);
   font-size: 1rem;
   flex-shrink: 0;
+  transition: color 0.15s;
 }
 .entry-del:active { color: var(--danger); }
 
@@ -656,6 +728,7 @@ input[type="number"]::-webkit-outer-spin-button {
   font-weight: 600;
   padding: 4px 8px;
   border-radius: 8px;
+  transition: background 0.15s;
 }
 .entry-del-btn:active { background: #fee; }
 
@@ -671,6 +744,7 @@ input[type="number"]::-webkit-outer-spin-button {
   background: var(--card);
   border: 1.5px dashed var(--border);
   border-radius: var(--radius);
+  animation: fade-up 0.3s ease both;
 }
 .empty-state .emoji { font-size: 2.8rem; display: block; margin-bottom: 10px; }
 .empty-state p { font-size: 0.92rem; line-height: 1.5; }
@@ -698,9 +772,13 @@ input[type="number"]::-webkit-outer-spin-button {
   max-width: 220px;
   box-shadow: var(--shadow-sm);
   text-align: left;
-  transition: transform 0.15s;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+  animation: fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.fav-chip:active { transform: scale(0.96); }
+.fav-chip:active {
+  transform: scale(0.96);
+  box-shadow: var(--shadow-md);
+}
 
 .fav-chip-name {
   font-weight: 700;
@@ -715,6 +793,7 @@ input[type="number"]::-webkit-outer-spin-button {
   color: var(--primary);
   font-weight: 700;
   margin-top: 4px;
+  font-variant-numeric: tabular-nums;
 }
 
 .fav-chip-macros {
@@ -736,9 +815,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 .fav-chip-del:active { color: var(--danger); }
 
-.fav-chip {
-  position: relative;
-}
+.fav-chip { position: relative; }
 
 .empty-mini {
   text-align: center;
@@ -760,30 +837,34 @@ input[type="number"]::-webkit-outer-spin-button {
   transform: translateX(-50%);
   width: 100%;
   max-width: 480px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 6px 20px calc(8px + env(safe-area-inset-bottom));
+  padding: 8px 20px calc(8px + env(safe-area-inset-bottom));
   z-index: 50;
-  box-shadow: 0 -4px 20px rgba(26, 29, 46, 0.06);
+  box-shadow: 0 -6px 24px rgba(15, 23, 42, 0.06);
 }
 
 .nav-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   font-size: 0.7rem;
   color: var(--text-2);
-  padding: 4px 12px;
-  border-radius: 10px;
+  padding: 6px 14px;
+  border-radius: 14px;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.15s ease;
 }
+.nav-btn:active { transform: scale(0.92); }
 .nav-btn.active {
   color: var(--primary);
   font-weight: 700;
+  background: var(--primary-light);
 }
 .nav-ico { font-size: 1.3rem; line-height: 1; }
 
@@ -791,17 +872,22 @@ input[type="number"]::-webkit-outer-spin-button {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #f97316, #fbbf24);
+  background: var(--primary);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(249, 115, 22, 0.4);
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35);
   margin-top: -30px;
   transform: translateY(-4px);
   border: 4px solid var(--bg);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+  animation: pulse-glow 2.6s ease-in-out infinite;
 }
-.nav-fab:active { transform: translateY(-2px) scale(0.95); }
+.nav-fab:active {
+  transform: translateY(-2px) scale(0.93);
+  animation: none;
+}
 
 .fab-plus {
   font-size: 1.7rem;
@@ -813,23 +899,25 @@ input[type="number"]::-webkit-outer-spin-button {
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(26, 29, 46, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fade-in 0.15s ease;
+  animation: fade-in 0.18s ease;
 }
 
 .overlay-inner {
   width: 100%;
   max-width: 480px;
   height: 100dvh;
-  background: var(--bg-grad);
+  background: var(--bg);
   position: relative;
   display: flex;
   flex-direction: column;
+  animation: scale-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .flow {
@@ -847,8 +935,9 @@ input[type="number"]::-webkit-outer-spin-button {
   justify-content: space-between;
   padding: calc(18px + env(safe-area-inset-top)) 0 12px;
   flex-shrink: 0;
+  animation: fade-up 0.3s ease both;
 }
-.flow-head h2 { font-size: 1.2rem; font-weight: 800; }
+.flow-head h2 { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.02em; }
 
 .flow-scroll {
   flex: 1;
@@ -858,11 +947,6 @@ input[type="number"]::-webkit-outer-spin-button {
   -webkit-overflow-scrolling: touch;
 }
 .flow-scroll::-webkit-scrollbar { display: none; }
-
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
 
 /* ============ Шаг: фото ============ */
 .photo-area {
@@ -876,9 +960,15 @@ input[type="number"]::-webkit-outer-spin-button {
   align-items: center;
   justify-content: center;
   margin-bottom: 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  animation: fade-up 0.35s ease both;
 }
 
-.photo-area.has-photo { border-style: solid; padding: 0; }
+.photo-area.has-photo {
+  border-style: solid;
+  border-color: var(--primary);
+  padding: 0;
+}
 
 .photo-area img {
   width: 100%;
@@ -897,7 +987,10 @@ input[type="number"]::-webkit-outer-spin-button {
   gap: 8px;
 }
 
-.photo-ico { font-size: 3rem; }
+.photo-ico {
+  font-size: 3rem;
+  animation: fade-up 0.4s ease both;
+}
 
 .photo-hint {
   font-size: 0.9rem;
@@ -910,14 +1003,17 @@ input[type="number"]::-webkit-outer-spin-button {
   position: absolute;
   bottom: 10px;
   right: 10px;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(15, 23, 42, 0.75);
   color: #fff;
   font-size: 0.84rem;
   font-weight: 600;
   padding: 8px 14px;
   border-radius: 999px;
   z-index: 2;
+  backdrop-filter: blur(4px);
+  transition: background 0.2s ease;
 }
+.photo-retake:active { background: rgba(15, 23, 42, 0.9); }
 
 /* ============ Карточка описания ============ */
 .desc-card {
@@ -927,11 +1023,13 @@ input[type="number"]::-webkit-outer-spin-button {
   padding: 12px 14px 10px;
   margin-bottom: 14px;
   box-shadow: var(--shadow-sm);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  animation: fade-up 0.35s ease both;
+  animation-delay: 0.05s;
 }
 .desc-card:focus-within {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
 .desc-head {
@@ -975,7 +1073,7 @@ input[type="number"]::-webkit-outer-spin-button {
   line-height: 1.5;
   min-height: 60px;
 }
-.desc-card textarea::placeholder { color: #b0b3c0; }
+.desc-card textarea::placeholder { color: var(--text-3); }
 
 .desc-hint {
   font-size: 0.72rem;
@@ -1018,8 +1116,6 @@ input[type="number"]::-webkit-outer-spin-button {
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
-
 .loading-text {
   font-size: 1.05rem;
   font-weight: 700;
@@ -1043,6 +1139,7 @@ input[type="number"]::-webkit-outer-spin-button {
   background: #000;
   margin-bottom: 6px;
   display: block;
+  animation: fade-in 0.4s ease both;
 }
 
 .result-scroll .field input,
@@ -1072,7 +1169,7 @@ input[type="number"]::-webkit-outer-spin-button {
   font-weight: 600;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s, transform 0.25s;
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
   z-index: 200;
   max-width: 90vw;
   text-align: center;
