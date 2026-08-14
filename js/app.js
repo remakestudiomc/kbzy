@@ -719,6 +719,8 @@ async function editEntry(id) {
 
   els.resultDateNote.textContent = 'Редактируем: ' + formatDateRu(entry.date);
   els.btnSaveFavorite.classList.add('hidden');
+  els.overlayAdd.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
   showFlow('flow-result');
 }
 
