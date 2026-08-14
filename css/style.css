@@ -262,24 +262,25 @@ input[type="number"]::-webkit-outer-spin-button {
 .hero-card {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 18px;
+  gap: 14px;
+  padding: 16px;
   margin-bottom: 12px;
   background: var(--card);
   border: 1px solid var(--border);
   animation-delay: 0.02s;
+  min-width: 0;
 }
 
 .hero-ring {
   position: relative;
-  width: 108px;
-  height: 108px;
+  width: 92px;
+  height: 92px;
   flex-shrink: 0;
 }
 
 .ring-svg {
-  width: 108px;
-  height: 108px;
+  width: 92px;
+  height: 92px;
   transform: rotate(-90deg);
 }
 
@@ -347,10 +348,14 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .hero-remain {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--text);
   margin-top: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .hero-progress {
@@ -388,6 +393,7 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .macro-card {
   padding: 14px 12px;
+  min-width: 0;
   transition: transform 0.15s ease, box-shadow 0.2s ease;
   animation-delay: 0.06s;
 }
@@ -409,26 +415,36 @@ input[type="number"]::-webkit-outer-spin-button {
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--text-2);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.macro-icon { font-size: 0.9rem; }
+.macro-icon { font-size: 0.9rem; flex-shrink: 0; }
 
 .macro-nums {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 2px 4px;
   margin-top: 6px;
+  min-width: 0;
+  max-width: 100%;
 }
 .macro-nums b {
   font-size: 1.35rem;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
+  overflow: hidden;
 }
 .macro-slash {
   font-size: 0.72rem;
   color: var(--text-2);
   display: flex;
   gap: 2px;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 /* ============ Секции ============ */
@@ -437,11 +453,17 @@ input[type="number"]::-webkit-outer-spin-button {
   align-items: center;
   justify-content: space-between;
   margin: 16px 0 10px;
+  gap: 10px;
+  min-width: 0;
 }
 .section-head h2 {
   font-size: 1.1rem;
   font-weight: 800;
   letter-spacing: -0.02em;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .section-sub {
   font-size: 0.76rem;
@@ -462,6 +484,8 @@ input[type="number"]::-webkit-outer-spin-button {
   border-radius: 999px;
   box-shadow: 0 4px 14px rgba(212, 160, 23, 0.28);
   transition: transform 0.15s ease, box-shadow 0.2s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .btn-add-simple:active {
   transform: scale(0.94);
@@ -646,8 +670,9 @@ input[type="number"]::-webkit-outer-spin-button {
 .entry-main {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 12px;
+  min-width: 0;
 }
 
 .entry-photo-wrap {
@@ -689,6 +714,7 @@ input[type="number"]::-webkit-outer-spin-button {
   font-size: 1.05rem;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 
 .entry-del {
@@ -700,21 +726,33 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 .entry-del:active { color: var(--danger); }
 
+/* Макросы: переносятся на новую строку, если не влезают */
 .entry-macros {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 6px 14px;
   padding: 0 12px 10px 80px;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   color: var(--text-2);
+  min-width: 0;
 }
 .entry-macros b { color: var(--text); font-weight: 600; }
-.entry-macros span { display: flex; align-items: center; gap: 3px; }
+.entry-macros span { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
 
 .entry-other-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 6px 10px;
   padding: 0 12px 10px 80px;
+  min-width: 0;
+}
+
+.entry-time {
+  font-size: 0.76rem;
+  color: var(--text-2);
+  white-space: nowrap;
 }
 
 .entry-del-btn {
@@ -727,10 +765,6 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 .entry-del-btn:active { background: #fee; }
 
-.entry-time {
-  font-size: 0.76rem;
-  color: var(--text-2);
-}
 
 .empty-state {
   text-align: center;
@@ -1031,6 +1065,8 @@ input[type="number"]::-webkit-outer-spin-button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 10px;
   margin-bottom: 8px;
 }
 
@@ -1173,4 +1209,43 @@ input[type="number"]::-webkit-outer-spin-button {
 .toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+/* ============ Адаптация для узких экранов ============ */
+@media (max-width: 390px) {
+  .screen { padding-left: 12px; padding-right: 12px; }
+
+  .hero-card { gap: 10px; padding: 14px 12px; }
+  .hero-ring { width: 80px; height: 80px; }
+  .ring-svg { width: 80px; height: 80px; }
+  .ring-value { font-size: 1.3rem; }
+
+  .macro-grid { gap: 8px; }
+  .macro-card { padding: 12px 10px; }
+  .macro-nums b { font-size: 1.2rem; }
+  .macro-head { font-size: 0.7rem; }
+
+  .entry-main { gap: 8px; padding: 10px; }
+  .entry-photo-wrap { width: 48px; height: 48px; }
+  .entry-kcal { font-size: 0.95rem; }
+  .entry-macros, .entry-other-row { padding-left: 66px; }
+
+  .date-btn { padding: 7px 8px; }
+  .brand-name { font-size: 0.98rem; }
+  .brand-tag { font-size: 0.68rem; }
+
+  /* Поля результата в столбик — не сжимаются */
+  .grid-3 { grid-template-columns: 1fr; gap: 8px; }
+  .result-row { flex-direction: column; }
+}
+
+@media (max-width: 340px) {
+  .hero-ring { display: none; }
+  .hero-card { gap: 0; }
+
+  .macro-grid { grid-template-columns: 1fr; gap: 8px; }
+  .macro-card { padding: 10px 14px; }
+  .macro-nums b { font-size: 1.4rem; }
+
+  .root-text { word-break: break-word; }
 }
