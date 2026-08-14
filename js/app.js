@@ -284,7 +284,7 @@ function renderTotals(entries) {
   const pct = s.kcal > 0 ? Math.min(totals.kcal / s.kcal, 1) : 0;
   const CIRC = 326.7;
   els.kcalRing.style.strokeDashoffset = CIRC - CIRC * pct;
-  els.kcalRing.style.stroke = pct > 1 ? '#ef4444' : '#4f46e5';
+  els.kcalRing.style.stroke = pct > 1 ? '#ef4444' : '#d4a017';
 }
 
 function animateNumber(el, target) {
