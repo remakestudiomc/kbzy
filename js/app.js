@@ -1,0 +1,668 @@
+/* ============================================================
+   Основная логика приложения «КБЖУ Дневник»
+   ============================================================ */
+
+/* ---------- Состояние ---------- */
+
+const state = {
+  settings: loadSettings(),
+  currentDate: todayStr(),
+  pendingImage: null, // data URL выбранного фото
+  pendingDescription: '',
+  analyzing: false,
+};
+
+let toastTimer = null;
+
+/* ---------- DOM-элементы ---------- */
+
+const $ = (id) => document.getElementById(id);
+
+const els = {
+  // Экраны
+  screens: document.querySelectorAll('.screen'),
+  navBtns: document.querySelectorAll('.nav-btn'),
+
+  // Дневник
+  dateTitle: $('date-title'),
+  dateSub: $('date-sub'),
+  datePicker: $('date-picker'),
+  btnPrevDay: $('btn-prev-day'),
+  btnNextDay: $('btn-next-day'),
+  btnDate: $('btn-date'),
+  kcalNow: $('kcal-now'),
+  kcalGoal: $('kcal-goal'),
+  kcalBar: $('kcal-bar'),
+  kcalRemain: $('kcal-remain'),
+  proteinNow: $('protein-now'),
+  proteinGoal: $('protein-goal'),
+  proteinBar: $('protein-bar'),
+  fatsNow: $('fats-now'),
+  fatsGoal: $('fats-goal'),
+  fatsBar: $('fats-bar'),
+  carbsNow: $('carbs-now'),
+  carbsGoal: $('carbs-goal'),
+  carbsBar: $('carbs-bar'),
+  entriesList: $('entries-list'),
+
+  // Настройки
+  setCal: $('set-cal'),
+  setProtein: $('set-protein'),
+  setFats: $('set-fats'),
+  setCarbs: $('set-carbs'),
+  setApiKey: $('set-apikey'),
+  setModel: $('set-model'),
+  btnSaveSettings: $('btn-save-settings'),
+  btnClearData: $('btn-clear-data'),
+  btnGetKey: $('btn-get-key'),
+
+  // Навигация
+  navAdd: $('nav-add'),
+  btnAddSimple: $('btn-add-simple'),
+
+  // Оверлей добавления
+  overlayAdd: $('overlay-add'),
+  flowCapture: $('flow-capture'),
+  flowLoading: $('flow-loading'),
+  flowResult: $('flow-result'),
+
+  btnCloseFlow: $('btn-close-flow'),
+  btnCloseResult: $('btn-close-result'),
+  fileInput: $('file-input'),
+  cameraInput: $('camera-input'),
+  photoArea: $('photo-area'),
+  photoPreview: $('photo-preview'),
+  photoEmpty: $('photo-empty'),
+  btnRetakePhoto: $('btn-retake-photo'),
+  btnTakePhoto: $('btn-take-photo'),
+  btnChoosePhoto: $('btn-choose-photo'),
+  addDescription: $('add-description'),
+  descCount: $('desc-count'),
+  btnAnalyze: $('btn-analyze'),
+
+  // Результат
+  resultPhoto: $('result-photo'),
+  resultDateNote: $('result-date-note'),
+  resultName: $('result-name'),
+  resultWeight: $('result-weight'),
+  resultCal: $('result-cal'),
+  resultProtein: $('result-protein'),
+  resultFats: $('result-fats'),
+  resultCarbs: $('result-carbs'),
+  resultDesc: $('result-desc'),
+  btnSaveResult: $('btn-save-result'),
+  btnBackCapture: $('btn-back-capture'),
+  btnDeleteResult: $('btn-delete-result'),
+
+  // Тост
+  toast: $('toast'),
+};
+
+/* ============================================================
+   Инициализация
+   ============================================================ */
+
+async function init() {
+  bindEvents();
+  loadSettingsIntoForm();
+  applySettingsToUI();
+  openDB().catch(() => {
+    showToast('⚠️ Не удалось открыть базу данных');
+  });
+  await refreshDiary();
+}
+
+/* ============================================================
+   Обработчики событий
+   ============================================================ */
+
+function bindEvents() {
+  // Навигация
+  els.navBtns.forEach((btn) => {
+    btn.addEventListener('click', () => switchScreen(btn.dataset.screen));
+  });
+  els.navAdd.addEventListener('click', openAddFlow);
+  els.btnAddSimple.addEventListener('click', openAddFlow);
+
+  // Даты
+  els.btnPrevDay.addEventListener('click', () => { state.currentDate = addDays(state.currentDate, -1); refreshDiary(); });
+  els.btnNextDay.addEventListener('click', () => { state.currentDate = addDays(state.currentDate, 1); refreshDiary(); });
+  els.btnDate.addEventListener('click', () => els.datePicker.showPicker());
+  els.datePicker.addEventListener('change', () => {
+    if (els.datePicker.value) {
+      state.currentDate = els.datePicker.value;
+      refreshDiary();
+    }
+  });
+
+  // Ввод фото
+  els.btnTakePhoto.addEventListener('click', () => els.cameraInput.click());
+  els.btnChoosePhoto.addEventListener('click', () => els.fileInput.click());
+  els.btnRetakePhoto.addEventListener('click', () => {
+    resetPhoto();
+    els.cameraInput.value = '';
+    els.fileInput.value = '';
+    els.cameraInput.click();
+  });
+
+  els.cameraInput.addEventListener('change', (e) => handleFileSelect(e.target.files[0]));
+  els.fileInput.addEventListener('change', (e) => handleFileSelect(e.target.files[0]));
+
+  // Описание и анализ
+  els.addDescription.addEventListener('input', () => {
+    state.pendingDescription = els.addDescription.value.trim();
+    updateDescCount();
+    updateAnalyzeButton();
+  });
+  els.btnAnalyze.addEventListener('click', analyzePhoto);
+
+  // Результат
+  els.btnSaveResult.addEventListener('click', saveResult);
+  els.btnDeleteResult.addEventListener('click', resetFlow);
+  els.btnBackCapture.addEventListener('click', goBackToCapture);
+  els.btnCloseFlow.addEventListener('click', closeFlow);
+  els.btnCloseResult.addEventListener('click', closeFlow);
+
+  // Закрытие оверлея по клику на фон
+  els.overlayAdd.addEventListener('click', (e) => {
+    if (e.target === els.overlayAdd) closeFlow();
+  });
+
+  // Закрытие по Back / Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeFlow();
+  });
+  window.addEventListener('popstate', (e) => {
+    if (!els.overlayAdd.classList.contains('hidden')) {
+      closeFlow();
+      e.preventDefault();
+    }
+  });
+
+  // Настройки
+  els.btnSaveSettings.addEventListener('click', saveSettingsHandler);
+  els.btnClearData.addEventListener('click', clearDataHandler);
+  els.btnGetKey.addEventListener('click', showKeyInstructions);
+
+  // Переключение экранов — сброс выбранной даты при перезагрузке
+  window.addEventListener('beforeunload', () => {});
+}
+
+/* ============================================================
+   Экраны
+   ============================================================ */
+
+function switchScreen(screenId) {
+  els.screens.forEach((s) => s.classList.remove('active'));
+  const target = document.getElementById(screenId);
+  if (target) target.classList.add('active');
+
+  els.navBtns.forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.screen === screenId);
+  });
+
+  if (screenId === 'screen-diary') {
+    refreshDiary();
+  }
+}
+
+/* ============================================================
+   Дневник
+   ============================================================ */
+
+async function refreshDiary() {
+  const dateStr = state.currentDate;
+  const isToday = dateStr === todayStr();
+
+  // Заголовок
+  els.dateTitle.textContent = isToday ? 'Сегодня' : formatDateRu(dateStr).split(',').shift();
+  els.dateSub.textContent = formatDateRu(dateStr);
+  els.datePicker.value = dateStr;
+
+  // Итоги
+  applySettingsToUI();
+
+  // Записи
+  let entries = [];
+  try {
+    entries = await DBGetEntriesByDate(dateStr);
+  } catch (e) {
+    showToast('⚠️ Ошибка загрузки записей');
+  }
+
+  renderEntries(entries);
+  renderTotals(entries);
+}
+
+function renderTotals(entries) {
+  const s = state.settings;
+
+  const totals = entries.reduce(
+    (acc, e) => {
+      acc.kcal += e.kcal || 0;
+      acc.protein += e.protein || 0;
+      acc.fats += e.fats || 0;
+      acc.carbs += e.carbs || 0;
+      return acc;
+    },
+    { kcal: 0, protein: 0, fats: 0, carbs: 0 }
+  );
+
+  // Округление
+  totals.kcal = Math.round(totals.kcal * 10) / 10;
+  totals.protein = Math.round(totals.protein * 10) / 10;
+  totals.fats = Math.round(totals.fats * 10) / 10;
+  totals.carbs = Math.round(totals.carbs * 10) / 10;
+
+  els.kcalNow.textContent = Math.round(totals.kcal);
+  els.kcalGoal.textContent = s.kcal;
+  els.proteinNow.textContent = Math.round(totals.protein);
+  els.proteinGoal.textContent = s.protein;
+  els.fatsNow.textContent = Math.round(totals.fats);
+  els.fatsGoal.textContent = s.fats;
+  els.carbsNow.textContent = Math.round(totals.carbs);
+  els.carbsGoal.textContent = s.carbs;
+
+  const remain = s.kcal - totals.kcal;
+  els.kcalRemain.textContent = remain >= 0
+    ? `осталось ${Math.round(remain)}`
+    : `превышение на ${Math.round(Math.abs(remain))}`;
+
+  setBar(els.kcalBar, totals.kcal, s.kcal);
+  setBar(els.proteinBar, totals.protein, s.protein);
+  setBar(els.fatsBar, totals.fats, s.fats);
+  setBar(els.carbsBar, totals.carbs, s.carbs);
+}
+
+function setBar(bar, value, goal) {
+  const pct = goal > 0 ? (value / goal) * 100 : 0;
+  bar.style.width = Math.min(pct, 100) + '%';
+  bar.classList.toggle('over', pct > 100);
+}
+
+function renderEntries(entries) {
+  els.entriesList.innerHTML = '';
+
+  if (entries.length === 0) {
+    els.entriesList.innerHTML = `
+      <div class="empty-state">
+        <span class="emoji">🍽️</span>
+        <p>Пока нет записей на этот день.<br>Нажмите <b>＋ Добавить</b>, чтобы записать приём пищи</p>
+      </div>`;
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+
+  entries.forEach((entry) => {
+    const card = document.createElement('div');
+    card.className = 'entry-card';
+    card.dataset.id = entry.id;
+
+    const time = entry.time || entry.createdAt ? formatTime(entry.createdAt || Date.parse(entry.time)) : '';
+    const hasPhoto = !!(entry.image && entry.image.length > 100);
+
+    const photoHtml = hasPhoto
+      ? `<img src="${entry.image}" alt="${escapeHtml(entry.name)}">`
+      : `<span class="entry-emoji">🍽️</span>`;
+
+    card.innerHTML = `
+      <div class="entry-main">
+        <div class="entry-photo-wrap">${photoHtml}</div>
+        <div class="entry-info">
+          <div class="entry-name">${escapeHtml(entry.name)}</div>
+          ${entry.description ? `<div class="entry-desc">${escapeHtml(entry.description)}</div>` : ''}
+        </div>
+        <div class="entry-kcal">${Math.round(entry.kcal || 0)} ккал</div>
+        <button class="entry-del" data-action="del" aria-label="Удалить">✕</button>
+      </div>
+      <div class="entry-macros">
+        <span><b>${fmt(entry.protein)}</b> г белков</span>
+        <span><b>${fmt(entry.fats)}</b> г жиров</span>
+        <span><b>${fmt(entry.carbs)}</b> г углеводов</span>
+        ${entry.weight ? `<span><b>${Math.round(entry.weight)}</b> г</span>` : ''}
+      </div>
+      <div class="entry-other-row">
+        <button class="entry-del-btn" data-action="del">Удалить</button>
+        ${time ? `<span class="entry-time">🕐 ${time}</span>` : ''}
+      </div>
+    `;
+
+    card.querySelectorAll('[data-action="del"]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteEntry(entry.id);
+      });
+    });
+
+    frag.appendChild(card);
+  });
+
+  els.entriesList.appendChild(frag);
+}
+
+function fmt(v) {
+  const n = parseFloat(v) || 0;
+  return (Math.round(n * 10) / 10).toLocaleString('ru-RU');
+}
+
+function escapeHtml(str) {
+  const entityMap = {
+    '&': '&' + 'amp;',
+    '<': '&' + 'lt;',
+    '>': '&' + 'gt;',
+    '"': '&' + 'quot;',
+    "'": '&' + '#039;'
+  };
+  return String(str).replace(/[&<>"']/g, (c) => entityMap[c]);
+}
+
+async function deleteEntry(id) {
+  if (!confirm('Удалить запись?')) return;
+  try {
+    await DBDeleteEntry(id);
+    showToast('🗑 Запись удалена');
+    refreshDiary();
+  } catch (e) {
+    showToast('⚠️ Не удалось удалить');
+  }
+}
+
+/* ============================================================
+   Поток добавления: фото → нейросеть → результат
+   ============================================================ */
+
+function openAddFlow() {
+  resetFlow();
+  els.overlayAdd.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeFlow() {
+  els.overlayAdd.classList.add('hidden');
+  document.body.style.overflow = '';
+  resetFlow();
+}
+
+function resetFlow() {
+  state.pendingImage = null;
+  state.pendingDescription = '';
+  els.addDescription.value = '';
+  els.cameraInput.value = '';
+  els.fileInput.value = '';
+  resetPhoto();
+  updateDescCount();
+  showFlow('flow-capture');
+}
+
+function resetPhoto() {
+  els.photoPreview.classList.add('hidden');
+  els.photoPreview.removeAttribute('src');
+  els.photoEmpty.classList.remove('hidden');
+  els.btnRetakePhoto.classList.add('hidden');
+  els.photoArea.classList.remove('has-photo');
+  updateAnalyzeButton();
+}
+
+function showFlow(flowId) {
+  [els.flowCapture, els.flowLoading, els.flowResult].forEach((f) => f.classList.remove('visible'));
+  document.getElementById(flowId).classList.add('visible');
+}
+
+function handleFileSelect(file) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    showToast('⚠️ Выберите изображение');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    setPhoto(e.target.result);
+  };
+  reader.onerror = () => showToast('⚠️ Не удалось прочитать файл');
+  reader.readAsDataURL(file);
+}
+
+function setPhoto(dataUrl) {
+  state.pendingImage = dataUrl;
+  els.photoPreview.src = dataUrl;
+  els.photoPreview.classList.remove('hidden');
+  els.photoEmpty.classList.add('hidden');
+  els.btnRetakePhoto.classList.remove('hidden');
+  els.photoArea.classList.add('has-photo');
+  updateAnalyzeButton();
+}
+
+/* ---------- Обновление счётчика символов описания ---------- */
+
+function updateDescCount() {
+  const len = els.addDescription.value.length;
+  els.descCount.textContent = `${len} / 300`;
+}
+
+/* ---------- Обновление состояния кнопки анализа ---------- */
+
+function updateAnalyzeButton() {
+  const hasImage = !!state.pendingImage;
+  const hasDesc = !!els.addDescription.value.trim();
+  els.btnAnalyze.disabled = !hasImage && !hasDesc;
+}
+
+async function analyzePhoto() {
+  if (state.analyzing) return;
+
+  // Проверяем наличие данных (фото или описание)
+  const hasImage = !!state.pendingImage;
+  const hasDesc = !!els.addDescription.value.trim();
+  if (!hasImage && !hasDesc) return;
+
+  const { apiKey, model } = state.settings;
+  if (!apiKey) {
+    showToast('🔑 Сначала укажите API-ключ в настройках');
+    switchScreen('screen-settings');
+    closeFlow();
+    return;
+  }
+
+  state.analyzing = true;
+  showFlow('flow-loading');
+
+  try {
+    const result = await geminiAnalyzeFood(
+      state.pendingImage,
+      state.pendingDescription,
+      apiKey,
+      model
+    );
+
+    // Заполняем форму результата
+    els.resultName.value = result.name || '';
+    els.resultWeight.value = result.weight || '';
+    els.resultCal.value = result.kcal || '';
+    els.resultProtein.value = result.protein || '';
+    els.resultFats.value = result.fats || '';
+    els.resultCarbs.value = result.carbs || '';
+    els.resultDesc.value = state.pendingDescription || '';
+
+    // Показываем фото в результате, только если оно есть
+    if (state.pendingImage) {
+      els.resultPhoto.src = state.pendingImage;
+      els.resultPhoto.classList.remove('hidden');
+    } else {
+      els.resultPhoto.removeAttribute('src');
+      els.resultPhoto.classList.add('hidden');
+    }
+
+    const today = todayStr();
+    els.resultDateNote.textContent = state.currentDate === today
+      ? `Будет добавлено: сегодня, ${formatTime(Date.now())}`
+      : `Будет добавлено: ${formatDateRu(state.currentDate)}`;
+
+    showFlow('flow-result');
+  } catch (err) {
+    let msg = err.message || 'Ошибка анализа';
+
+    // Понятные сообщения
+    if (err.noFood) {
+      msg = 'На фото не обнаружена еда. Сделайте фото блюда и попробуйте снова.';
+    } else if (err.rawStatus === 403 || err.rawStatus === 401 || /API key|permission|forbidden/i.test(msg)) {
+      msg = '❌ Неверный API-ключ. Проверьте в настройках.';
+    } else if (err.rawStatus === 429 || /quota|rate limit|resource exhausted/i.test(msg)) {
+      msg = '⏳ Бесплатный лимит исчерпан. Попробуйте позже или получите новый ключ.';
+    } else if (/network|fetch failed|failed to fetch|ERR_INTERNET/i.test(msg)) {
+      msg = '🌐 Нет соединения с интернетом. Проверьте сеть.';
+    } else if (/маркdown|```|markdown/i.test(msg)) {
+      msg = 'Модель вернула ответ в неверном формате. Попробуйте ещё раз.';
+    }
+
+    showToast(msg);
+    goBackToCapture();
+  } finally {
+    state.analyzing = false;
+  }
+}
+
+function goBackToCapture() {
+  showFlow('flow-capture');
+  updateAnalyzeButton();
+}
+
+async function saveResult() {
+  const name = els.resultName.value.trim();
+  const weight = parseFloat(els.resultWeight.value);
+  const kcal = parseFloat(els.resultCal.value);
+  const protein = parseFloat(els.resultProtein.value);
+  const fats = parseFloat(els.resultFats.value);
+  const carbs = parseFloat(els.resultCarbs.value);
+  const description = els.resultDesc.value.trim();
+
+  if (!name) {
+    showToast('Введите название блюда');
+    return;
+  }
+  if (isNaN(kcal) || kcal < 0) {
+    showToast('Укажите калорийность');
+    return;
+  }
+
+  const entry = {
+    name,
+    description: description || '',
+    weight: isNaN(weight) ? 0 : Math.round(weight),
+    kcal: isNaN(kcal) ? 0 : Math.round(kcal * 10) / 10,
+    protein: isNaN(protein) ? 0 : Math.round(protein * 10) / 10,
+    fats: isNaN(fats) ? 0 : Math.round(fats * 10) / 10,
+    carbs: isNaN(carbs) ? 0 : Math.round(carbs * 10) / 10,
+    image: state.pendingImage || '',
+    date: state.currentDate,
+    createdAt: Date.now(),
+  };
+
+  try {
+    await DBAddEntry(entry);
+    showToast('✓ Добавлено в дневник');
+    closeFlow();
+    refreshDiary();
+  } catch (e) {
+    showToast('⚠️ Не удалось сохранить запись');
+  }
+}
+
+/* ============================================================
+   Настройки
+   ============================================================ */
+
+function loadSettingsIntoForm() {
+  const s = state.settings;
+  els.setCal.value = s.kcal;
+  els.setProtein.value = s.protein;
+  els.setFats.value = s.fats;
+  els.setCarbs.value = s.carbs;
+  els.setApiKey.value = s.apiKey;
+  els.setModel.value = s.model;
+}
+
+function applySettingsToUI() {
+  const s = state.settings;
+  els.kcalGoal.textContent = s.kcal;
+  els.proteinGoal.textContent = s.protein;
+  els.fatsGoal.textContent = s.fats;
+  els.carbsGoal.textContent = s.carbs;
+}
+
+function saveSettingsHandler() {
+  const kcal = parseInt(els.setCal.value, 10);
+  const protein = parseInt(els.setProtein.value, 10);
+  const fats = parseInt(els.setFats.value, 10);
+  const carbs = parseInt(els.setCarbs.value, 10);
+
+  if (isNaN(kcal) || kcal <= 0) {
+    showToast('Укажите калорийность больше 0');
+    els.setCal.focus();
+    return;
+  }
+
+  state.settings = {
+    ...state.settings,
+    kcal: kcal || 0,
+    protein: protein || 0,
+    fats: fats || 0,
+    carbs: carbs || 0,
+    apiKey: els.setApiKey.value.trim(),
+    model: els.setModel.value,
+  };
+
+  saveSettings(state.settings);
+  applySettingsToUI();
+  showToast('✓ Настройки сохранены');
+}
+
+async function clearDataHandler() {
+  if (!confirm('Удалить ВСЕ записи и настройки? Это действие нельзя отменить.')) return;
+  try {
+    await clearAllData();
+    state.settings = { ...DEFAULT_SETTINGS };
+    loadSettingsIntoForm();
+    applySettingsToUI();
+    showToast('Все данные стёрты');
+    refreshDiary();
+  } catch (e) {
+    showToast('⚠️ Не удалось стереть данные');
+  }
+}
+
+/* ---------- Инструкция по API-ключу ---------- */
+
+function showKeyInstructions() {
+  const text = [
+    '1. Откройте https://aistudio.google.com/apikey',
+    '2. Войдите с аккаунтом Google',
+    '3. Нажмите «Create API key»',
+    '4. Скопируйте ключ (начинается с AIza...)',
+    '5. Вставьте его в поле API-ключ и сохраните',
+    '',
+    'Бесплатный тариф Gemini Flash включает ~1500 запросов в день — для 5-10 фото в день хватит с запасом.',
+  ].join('\n');
+
+  alert(text);
+}
+
+/* ============================================================
+   Тост
+   ============================================================ */
+
+function showToast(message) {
+  els.toast.textContent = message;
+  els.toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    els.toast.classList.remove('show');
+  }, 2800);
+}
+
+/* ============================================================
+   Запуск
+   ============================================================ */
+
+document.addEventListener('DOMContentLoaded', init);

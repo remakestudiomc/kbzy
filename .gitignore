@@ -1,0 +1,12 @@
+# Настройки редакторов и ОС
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Локальные серверы
+*.log
