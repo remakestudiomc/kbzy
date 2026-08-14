@@ -21,122 +21,171 @@
   <!-- ================= Экран: Дневник ================= -->
   <main class="screen active" id="screen-diary">
     <header class="app-header">
+      <div class="header-top">
+        <div class="brand">
+          <span class="brand-logo">🥗</span>
+          <div>
+            <h1 class="brand-name">КБЖУ Дневник</h1>
+            <p class="brand-tag">с умным подсчётом</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="icon-btn soft" id="btn-share" aria-label="Поделиться">↗</button>
+          <button class="icon-btn soft settings-btn" data-screen="screen-settings" aria-label="Настройки">⚙️</button>
+        </div>
+      </div>
+
       <div class="date-nav">
-        <button class="icon-btn" id="btn-prev-day" aria-label="Предыдущий день">‹</button>
+        <button class="icon-btn nav-arrow" id="btn-prev-day" aria-label="Предыдущий день">‹</button>
         <button class="date-btn" id="btn-date" aria-label="Выбрать дату">
           <span class="date-title" id="date-title">Сегодня</span>
           <span class="date-sub" id="date-sub"></span>
         </button>
-        <button class="icon-btn" id="btn-next-day" aria-label="Следующий день">›</button>
+        <button class="icon-btn nav-arrow" id="btn-next-day" aria-label="Следующий день">›</button>
       </div>
       <input type="date" id="date-picker" class="hidden" tabindex="-1">
     </header>
 
-    <section class="totals-section">
-      <div class="card total-card">
-        <div class="total-row">
-          <span class="total-value" id="kcal-now">0</span>
-          <span class="total-slash">/</span>
-          <span class="total-goal" id="kcal-goal">2000</span>
-          <span class="total-unit">ккал</span>
-        </div>
-        <div class="bar"><div class="bar-fill kcal" id="kcal-bar"></div></div>
-        <div class="total-foot">
-          <span class="total-label">Калории</span>
-          <span class="total-remain" id="kcal-remain">осталось 2000</span>
-        </div>
-      </div>
+    <div class="screen-body">
 
-      <div class="macro-grid">
-        <div class="card macro-card">
-          <div class="macro-head"><span class="dot protein"></span>Белки</div>
+      <!-- Блок калорий -->
+      <section class="hero-card card">
+        <div class="hero-ring">
+          <svg viewBox="0 0 120 120" class="ring-svg">
+            <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
+            <circle class="ring-fill" id="kcal-ring" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="ring-center">
+            <span class="ring-value" id="kcal-now">0</span>
+            <span class="ring-label">ккал</span>
+          </div>
+        </div>
+        <div class="hero-info">
+          <div class="hero-goal">
+            <span class="hero-goal-label">Цель</span>
+            <button class="hero-goal-value" id="btn-date2"> <span id="kcal-goal">2000</span> ккал</button>
+          </div>
+          <div class="hero-remain" id="kcal-remain">осталось 2000</div>
+          <div class="hero-progress">
+            <div class="bar"><div class="bar-fill kcal" id="kcal-bar"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Макронутриенты -->
+      <section class="macro-grid">
+        <div class="card macro-card protein-card">
+          <div class="macro-head">
+            <span class="macro-icon">🥩</span>
+            <span>Белки</span>
+          </div>
           <div class="macro-nums"><b id="protein-now">0</b><span class="macro-slash">/<span id="protein-goal">100</span> г</span></div>
           <div class="bar thin"><div class="bar-fill protein" id="protein-bar"></div></div>
         </div>
-        <div class="card macro-card">
-          <div class="macro-head"><span class="dot fats"></span>Жиры</div>
+        <div class="card macro-card fats-card">
+          <div class="macro-head">
+            <span class="macro-icon">🥑</span>
+            <span>Жиры</span>
+          </div>
           <div class="macro-nums"><b id="fats-now">0</b><span class="macro-slash">/<span id="fats-goal">70</span> г</span></div>
           <div class="bar thin"><div class="bar-fill fats" id="fats-bar"></div></div>
         </div>
-        <div class="card macro-card">
-          <div class="macro-head"><span class="dot carbs"></span>Углеводы</div>
+        <div class="card macro-card carbs-card">
+          <div class="macro-head">
+            <span class="macro-icon">🍞</span>
+            <span>Углеводы</span>
+          </div>
           <div class="macro-nums"><b id="carbs-now">0</b><span class="macro-slash">/<span id="carbs-goal">250</span> г</span></div>
           <div class="bar thin"><div class="bar-fill carbs" id="carbs-bar"></div></div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="entries-section">
-      <div class="entries-head">
-        <h2>Приёмы пищи</h2>
-        <button class="btn-add-simple" id="btn-add-simple">＋ Добавить</button>
-      </div>
-      <div class="entries" id="entries-list"></div>
-    </section>
+      <!-- Избранное -->
+      <section class="favorites-section" id="favorites-section">
+        <div class="section-head">
+          <h2>⭐ Избранное</h2>
+          <span class="section-sub" id="fav-count"></span>
+        </div>
+        <div class="favorites-scroll" id="favorites-list"></div>
+      </section>
+
+      <!-- Записи -->
+      <section class="entries-section">
+        <div class="section-head">
+          <h2>📒 Приёмы пищи</h2>
+          <button class="btn-add-simple" id="btn-add-simple">＋ Добавить</button>
+        </div>
+        <div class="entries" id="entries-list"></div>
+      </section>
+
+    </div>
   </main>
 
   <!-- ================= Экран: Настройки ================= -->
   <main class="screen" id="screen-settings">
     <header class="app-header">
-      <h1 class="page-title">Настройки</h1>
+      <div class="settings-title">
+        <button class="icon-btn soft" data-screen="screen-diary" aria-label="Назад">‹</button>
+        <h1 class="page-title">Настройки</h1>
+      </div>
     </header>
 
-    <section class="card settings-section">
-      <h2>Дневная норма КБЖУ</h2>
-      <div class="field">
-        <label for="set-cal">Калории, ккал</label>
-        <input type="number" id="set-cal" min="0" step="1" inputmode="numeric" autocomplete="off">
-      </div>
-      <div class="grid-2">
+    <div class="screen-body">
+      <section class="card settings-section">
+        <h2>🎯 Дневная норма КБЖУ</h2>
         <div class="field">
-          <label for="set-protein">Белки, г</label>
-          <input type="number" id="set-protein" min="0" step="1" inputmode="numeric" autocomplete="off">
+          <label for="set-cal">Калории, ккал</label>
+          <input type="number" id="set-cal" min="0" step="1" inputmode="numeric" autocomplete="off">
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="set-protein">Белки, г</label>
+            <input type="number" id="set-protein" min="0" step="1" inputmode="numeric" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="set-fats">Жиры, г</label>
+            <input type="number" id="set-fats" min="0" step="1" inputmode="numeric" autocomplete="off">
+          </div>
         </div>
         <div class="field">
-          <label for="set-fats">Жиры, г</label>
-          <input type="number" id="set-fats" min="0" step="1" inputmode="numeric" autocomplete="off">
+          <label for="set-carbs">Углеводы, г</label>
+          <input type="number" id="set-carbs" min="0" step="1" inputmode="numeric" autocomplete="off">
         </div>
-      </div>
-      <div class="field">
-        <label for="set-carbs">Углеводы, г</label>
-        <input type="number" id="set-carbs" min="0" step="1" inputmode="numeric" autocomplete="off">
-      </div>
-    </section>
+      </section>
 
-    <section class="card settings-section">
-      <h2>Нейросеть (бесплатно)</h2>
-      <div class="field">
-        <label for="set-apikey">API-ключ Google Gemini</label>
-        <input type="password" id="set-apikey" placeholder="AIza..." autocomplete="off">
-      </div>
-      <div class="field">
-        <label for="set-model">Модель нейросети</label>
-        <select id="set-model">
-          <option value="auto">🤖 Автоматически (рекомендуется)</option>
-          <option value="gemini-flash-latest">Gemini Flash Latest</option>
-          <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-          <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
-          <option value="gemini-2.0-flash-preview">Gemini 2.0 Flash Preview</option>
-        </select>
-      </div>
-      <p class="hint-center">
-        В режиме «Автоматически» приложение переберёт доступные модели и выберет рабочую
-      </p>
-      <button class="ghost full" id="btn-get-key">🔑 Как получить бесплатный ключ</button>
-    </section>
+      <section class="card settings-section">
+        <h2>🤖 Нейросеть</h2>
+        <div class="field">
+          <label for="set-apikey">API-ключ Google Gemini</label>
+          <input type="password" id="set-apikey" placeholder="AIza..." autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="set-model">Модель</label>
+          <select id="set-model">
+            <option value="auto">🤖 Автоматически (рекомендуется)</option>
+            <option value="gemini-flash-latest">Gemini Flash Latest</option>
+            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+            <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
+            <option value="gemini-2.0-flash-preview">Gemini 2.0 Flash Preview</option>
+          </select>
+        </div>
+        <p class="hint-center">В режиме «Автоматически» приложение переберёт модели и выберет рабочую</p>
+        <button class="btn-key" id="btn-get-key">🔑 Как получить бесплатный ключ</button>
+      </section>
 
-    <section class="card settings-section">
-      <h2>Установка на телефон</h2>
-      <ol class="help-list">
-        <li>Откройте адрес приложения в Chrome на Android</li>
-        <li>Меню ⋮ → «Добавить на главный экран» или «Установить приложение»</li>
-        <li>Иконка появится на рабочем столе — запускайте как обычное приложение</li>
-      </ol>
-    </section>
+      <section class="card settings-section">
+        <h2>📱 Установка на телефон</h2>
+        <ol class="help-list">
+          <li>Откройте адрес приложения в Chrome на Android</li>
+          <li>Меню ⋮ → «Добавить на главный экран» или «Установить приложение»</li>
+          <li>Иконка появится на рабочем столе — запускайте как обычное приложение</li>
+        </ol>
+      </section>
 
-    <div class="settings-actions">
-      <button class="primary big full" id="btn-save-settings">Сохранить</button>
-      <button class="danger ghost full" id="btn-clear-data">Стереть все данные</button>
+      <div class="settings-actions">
+        <button class="primary big full" id="btn-save-settings">Сохранить</button>
+        <button class="danger full" id="btn-clear-data">Стереть все данные</button>
+      </div>
     </div>
   </main>
 
@@ -145,50 +194,51 @@
     <button class="nav-btn active" data-screen="screen-diary">
       <span class="nav-ico">📒</span><span>Дневник</span>
     </button>
-    <button class="nav-add" id="nav-add" aria-label="Добавить приём пищи"><span>＋</span></button>
+    <button class="nav-fab" id="nav-add" aria-label="Добавить приём пищи">
+      <span class="fab-plus">＋</span>
+    </button>
     <button class="nav-btn" data-screen="screen-settings">
       <span class="nav-ico">⚙️</span><span>Настройки</span>
     </button>
   </nav>
 
-  <!-- ================= Оверлей: фото / расчёт / результат ================= -->
+  <!-- ================= Оверлей: фото / описание / результат ================= -->
   <div class="overlay hidden" id="overlay-add">
     <div class="overlay-inner">
 
-      <!-- Шаг 1: фото -->
+      <!-- Шаг 1: ввод -->
       <section class="flow visible" id="flow-capture">
         <header class="flow-head">
-          <h2 id="flow-title">Новый приём пищи</h2>
+          <h2>Новый приём пищи</h2>
           <button class="icon-btn" id="btn-close-flow" aria-label="Закрыть">✕</button>
         </header>
 
-        <input type="file" accept="image/*" id="file-input" class="hidden">
-        <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden">
+        <div class="flow-scroll">
+          <input type="file" accept="image/*" id="file-input" class="hidden">
+          <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden">
 
-        <div class="photo-area" id="photo-area">
-          <img id="photo-preview" class="hidden" alt="Фото блюда">
-          <button class="photo-retake hidden" id="btn-retake-photo">↺ Переснять</button>
-          <div class="photo-empty" id="photo-empty">
-            <div class="photo-ico">🍽️</div>
-            <p class="photo-hint">Сфотографируйте блюдо целиком —<br>так расчёт будет точнее</p>
-            <button class="primary big" id="btn-take-photo">📷 Сделать фото</button>
-            <button class="ghost big" id="btn-choose-photo">🖼 Из галереи</button>
+          <div class="photo-area" id="photo-area">
+            <img id="photo-preview" class="hidden" alt="Фото блюда">
+            <button class="photo-retake hidden" id="btn-retake-photo">↺ Переснять</button>
+            <div class="photo-empty" id="photo-empty">
+              <div class="photo-ico">🍽️</div>
+              <p class="photo-hint">Сфотографируйте блюдо целиком — так расчёт будет точнее</p>
+              <button class="primary big" id="btn-take-photo">📷 Сделать фото</button>
+              <button class="ghost big" id="btn-choose-photo">🖼 Из галереи</button>
+            </div>
           </div>
-        </div>
 
-        <div class="flow-body">
           <div class="desc-card">
             <div class="desc-head">
               <span class="desc-label">✍️ Описание блюда <span class="desc-optional">(необязательно)</span></span>
               <span class="desc-count" id="desc-count">0 / 300</span>
             </div>
-            <textarea id="add-description" rows="3" maxlength="300" placeholder="Например: «овсянка на молоке с бананом и грецкими орехами, чай без сахара»"></textarea>
-            <p class="desc-hint">
-              Может заменить фото — просто опишите блюдо словами и нейросеть посчитает КБЖУ
-            </p>
+            <textarea id="add-description" rows="3" maxlength="300" placeholder="Например: «овсянка на молоке с бананом и орехами»"></textarea>
+            <p class="desc-hint">Может заменить фото — просто опишите блюдо словами</p>
           </div>
+
           <button class="primary big full" id="btn-analyze" disabled>✨ Рассчитать КБЖУ</button>
-          <p class="hint-center" id="analyze-hint">Добавьте фото или опишите блюдо — нейросеть рассчитает калории, белки, жиры и углеводы</p>
+          <p class="hint-center" id="analyze-hint">Добавьте фото или опишите блюдо — нейросеть рассчитает КБЖУ</p>
         </div>
       </section>
 
@@ -196,21 +246,21 @@
       <section class="flow" id="flow-loading">
         <div class="loading-wrap">
           <div class="spinner"></div>
-          <p class="loading-text">Нейросеть анализирует фото…</p>
-          <p class="hint-center">Обычно это занимает 5–15 секунд</p>
+          <p class="loading-text">Нейросеть анализирует…</p>
+          <p class="hint-center">Обычно 5–15 секунд</p>
         </div>
       </section>
 
       <!-- Шаг 3: результат -->
       <section class="flow" id="flow-result">
         <header class="flow-head">
-          <h2 id="result-header">Результат</h2>
+          <h2>Результат</h2>
           <button class="icon-btn" id="btn-close-result" aria-label="Закрыть">✕</button>
         </header>
 
         <div class="result-scroll">
-          <img class="result-photo" id="result-photo" alt="Фото блюда">
-          <p class="hint-center" id="result-date-note"></p>
+          <img class="result-photo hidden" id="result-photo" alt="Фото блюда">
+          <p class="hint-center accent" id="result-date-note"></p>
 
           <div class="field">
             <label for="result-name">Название блюда</label>
@@ -249,6 +299,7 @@
           </div>
 
           <button class="primary big full" id="btn-save-result">✓ Сохранить в дневник</button>
+          <button class="fav-btn full" id="btn-save-favorite">⭐ Сохранить в избранное</button>
           <div class="result-row">
             <button class="ghost" id="btn-back-capture">↺ Переснять</button>
             <button class="danger ghost" id="btn-delete-result">🗑 Удалить</button>

@@ -85,6 +85,25 @@ def main():
         if missing:
             errors.append(f'INDEX: нет элементов с id для: {sorted(missing)}')
 
+    # Проверка версии IndexedDB (должна быть 2 для избранного)
+    dbjs_path = check('js/db.js')
+    if dbjs_path:
+        with open(dbjs_path, 'r', encoding='utf-8-sig') as fh:
+            dbjs = fh.read()
+        if 'DB_VERSION = 2' not in dbjs:
+            errors.append('DB: DB_VERSION не равен 2 (нужно для store favorites)')
+        if 'STORE_FAVORITES' not in dbjs:
+            errors.append('DB: отсутствует STORE_FAVORITES')
+        if 'DBGetFavorites' not in dbjs or 'DBAddFavorite' not in dbjs:
+            errors.append('DB: отсутствуют функции для избранного')
+
+    # Проверка наличия кнопки избранного в HTML
+    if index_path:
+        with open(index_path, 'r', encoding='utf-8-sig') as fh:
+            html = fh.read()
+        if 'btn-save-favorite' not in html or 'favorites-list' not in html:
+            errors.append('INDEX: отсутствуют элементы избранного (btn-save-favorite / favorites-list)')
+
     # Вывод
     if errors:
         print('ОШИБКИ:')

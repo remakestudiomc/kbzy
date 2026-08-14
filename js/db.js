@@ -5,9 +5,10 @@
    ============================================================ */
 
 const DB_NAME = 'kbzy-diary';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_ENTRIES = 'entries';
 const STORE_SETTINGS = 'settings';
+const STORE_FAVORITES = 'favorites';
 
 const SETTINGS_KEY = 'kbzy-settings';
 
@@ -30,6 +31,9 @@ function openDB() {
       if (!db.objectStoreNames.contains(STORE_SETTINGS)) {
         db.createObjectStore(STORE_SETTINGS, { keyPath: 'key' });
       }
+      if (!db.objectStoreNames.contains(STORE_FAVORITES)) {
+        db.createObjectStore(STORE_FAVORITES, { keyPath: 'id', autoIncrement: true });
+      }
     };
 
     req.onsuccess = () => resolve(req.result);
@@ -44,7 +48,18 @@ function tx(storeName, mode, fn) {
     return new Promise((resolve, reject) => {
       const t = db.transaction(storeName, mode);
       const store = t.objectStore(storeName);
-      const result = fn(store);
+      let result;
+      try {
+        const req = fn(store);
+        // Если fn вернул IDBRequest — забираем result из него
+        if (req && typeof req.onsuccess === 'function' && 'result' in req) {
+          req.onsuccess = () => { result = req.result; };
+          req.onerror = () => reject(req.error);
+        }
+      } catch (err) {
+        reject(err);
+        return;
+      }
       t.oncomplete = () => resolve(result);
       t.onerror = () => reject(t.error);
       t.onabort = () => reject(t.error);
@@ -79,6 +94,20 @@ async function DBGetAllEntries() {
 
 async function DBClearEntries() {
   return tx(STORE_ENTRIES, 'readwrite', (store) => store.clear());
+}
+
+/* ---------- Избранное ---------- */
+
+async function DBAddFavorite(fav) {
+  return tx(STORE_FAVORITES, 'readwrite', (store) => store.add(fav));
+}
+
+async function DBGetFavorites() {
+  return tx(STORE_FAVORITES, 'readonly', (store) => store.getAll());
+}
+
+async function DBDeleteFavorite(id) {
+  return tx(STORE_FAVORITES, 'readwrite', (store) => store.delete(id));
 }
 
 /* ---------- Настройки ---------- */
@@ -130,7 +159,7 @@ function saveSettings(settings) {
 
 function clearAllData() {
   localStorage.removeItem(SETTINGS_KEY);
-  return DBClearEntries();
+  return Promise.all([DBClearEntries(), tx(STORE_FAVORITES, 'readwrite', (store) => store.clear())]);
 }
 
 /* ---------- Утилиты ---------- */

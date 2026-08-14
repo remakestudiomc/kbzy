@@ -7,9 +7,10 @@
 const state = {
   settings: loadSettings(),
   currentDate: todayStr(),
-  pendingImage: null, // data URL выбранного фото
+  pendingImage: null,
   pendingDescription: '',
   analyzing: false,
+  favorites: [],
 };
 
 let toastTimer = null;
@@ -23,6 +24,9 @@ const els = {
   screens: document.querySelectorAll('.screen'),
   navBtns: document.querySelectorAll('.nav-btn'),
 
+  // Бренд / шапка
+  btnShare: $('btn-share'),
+
   // Дневник
   dateTitle: $('date-title'),
   dateSub: $('date-sub'),
@@ -33,6 +37,7 @@ const els = {
   kcalNow: $('kcal-now'),
   kcalGoal: $('kcal-goal'),
   kcalBar: $('kcal-bar'),
+  kcalRing: $('kcal-ring'),
   kcalRemain: $('kcal-remain'),
   proteinNow: $('protein-now'),
   proteinGoal: $('protein-goal'),
@@ -44,6 +49,11 @@ const els = {
   carbsGoal: $('carbs-goal'),
   carbsBar: $('carbs-bar'),
   entriesList: $('entries-list'),
+
+  // Избранное
+  favoritesSection: $('favorites-section'),
+  favoritesList: $('favorites-list'),
+  favCount: $('fav-count'),
 
   // Настройки
   setCal: $('set-cal'),
@@ -91,6 +101,7 @@ const els = {
   resultCarbs: $('result-carbs'),
   resultDesc: $('result-desc'),
   btnSaveResult: $('btn-save-result'),
+  btnSaveFavorite: $('btn-save-favorite'),
   btnBackCapture: $('btn-back-capture'),
   btnDeleteResult: $('btn-delete-result'),
 
@@ -109,6 +120,13 @@ async function init() {
   openDB().catch(() => {
     showToast('⚠️ Не удалось открыть базу данных');
   });
+  try {
+    const all = await DBGetFavorites();
+    state.favorites = all || [];
+  } catch (e) {
+    state.favorites = [];
+  }
+  renderFavorites();
   await refreshDiary();
 }
 
@@ -123,6 +141,16 @@ function bindEvents() {
   });
   els.navAdd.addEventListener('click', openAddFlow);
   els.btnAddSimple.addEventListener('click', openAddFlow);
+
+  // Поделиться
+  els.btnShare.addEventListener('click', () => {
+    const text = `Сегодня я набрал(а) ${els.kcalNow.textContent} / ${els.kcalGoal.textContent} ккал — приложение КБЖУ Дневник`;
+    if (navigator.share) {
+      navigator.share({ title: 'КБЖУ Дневник', text }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(text).then(() => showToast('✓ Результат скопирован')).catch(() => {});
+    }
+  });
 
   // Даты
   els.btnPrevDay.addEventListener('click', () => { state.currentDate = addDays(state.currentDate, -1); refreshDiary(); });
@@ -158,6 +186,7 @@ function bindEvents() {
 
   // Результат
   els.btnSaveResult.addEventListener('click', saveResult);
+  els.btnSaveFavorite.addEventListener('click', saveFavorite);
   els.btnDeleteResult.addEventListener('click', resetFlow);
   els.btnBackCapture.addEventListener('click', goBackToCapture);
   els.btnCloseFlow.addEventListener('click', closeFlow);
@@ -168,7 +197,7 @@ function bindEvents() {
     if (e.target === els.overlayAdd) closeFlow();
   });
 
-  // Закрытие по Back / Escape
+  // Закрытие по Escape
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeFlow();
   });
@@ -183,9 +212,6 @@ function bindEvents() {
   els.btnSaveSettings.addEventListener('click', saveSettingsHandler);
   els.btnClearData.addEventListener('click', clearDataHandler);
   els.btnGetKey.addEventListener('click', showKeyInstructions);
-
-  // Переключение экранов — сброс выбранной даты при перезагрузке
-  window.addEventListener('beforeunload', () => {});
 }
 
 /* ============================================================
@@ -214,15 +240,12 @@ async function refreshDiary() {
   const dateStr = state.currentDate;
   const isToday = dateStr === todayStr();
 
-  // Заголовок
-  els.dateTitle.textContent = isToday ? 'Сегодня' : formatDateRu(dateStr).split(',').shift();
+  els.dateTitle.textContent = isToday ? 'Сегодня' : formatDateRu(dateStr).split(',')[0];
   els.dateSub.textContent = formatDateRu(dateStr);
   els.datePicker.value = dateStr;
 
-  // Итоги
   applySettingsToUI();
 
-  // Записи
   let entries = [];
   try {
     entries = await DBGetEntriesByDate(dateStr);
@@ -248,7 +271,6 @@ function renderTotals(entries) {
     { kcal: 0, protein: 0, fats: 0, carbs: 0 }
   );
 
-  // Округление
   totals.kcal = Math.round(totals.kcal * 10) / 10;
   totals.protein = Math.round(totals.protein * 10) / 10;
   totals.fats = Math.round(totals.fats * 10) / 10;
@@ -264,14 +286,18 @@ function renderTotals(entries) {
   els.carbsGoal.textContent = s.carbs;
 
   const remain = s.kcal - totals.kcal;
-  els.kcalRemain.textContent = remain >= 0
-    ? `осталось ${Math.round(remain)}`
-    : `превышение на ${Math.round(Math.abs(remain))}`;
+  els.kcalRemain.textContent = remain >= 0 ? `осталось ${Math.round(remain)} ккал` : `превышение на ${Math.round(Math.abs(remain))} ккал`;
 
   setBar(els.kcalBar, totals.kcal, s.kcal);
   setBar(els.proteinBar, totals.protein, s.protein);
   setBar(els.fatsBar, totals.fats, s.fats);
   setBar(els.carbsBar, totals.carbs, s.carbs);
+
+  // Кольцевой прогресс калорий
+  const pct = s.kcal > 0 ? Math.min(totals.kcal / s.kcal, 1) : 0;
+  const CIRC = 326.7;
+  els.kcalRing.style.strokeDashoffset = CIRC - CIRC * pct;
+  els.kcalRing.style.stroke = pct > 1 ? '#ef4444' : '#f97316';
 }
 
 function setBar(bar, value, goal) {
@@ -299,7 +325,7 @@ function renderEntries(entries) {
     card.className = 'entry-card';
     card.dataset.id = entry.id;
 
-    const time = entry.time || entry.createdAt ? formatTime(entry.createdAt || Date.parse(entry.time)) : '';
+    const time = entry.createdAt ? formatTime(entry.createdAt) : '';
     const hasPhoto = !!(entry.image && entry.image.length > 100);
 
     const photoHtml = hasPhoto
@@ -347,14 +373,17 @@ function fmt(v) {
 }
 
 function escapeHtml(str) {
-  const entityMap = {
-    '&': '&' + 'amp;',
-    '<': '&' + 'lt;',
-    '>': '&' + 'gt;',
-    '"': '&' + 'quot;',
-    "'": '&' + '#039;'
-  };
-  return String(str).replace(/[&<>"']/g, (c) => entityMap[c]);
+  // Используем String.fromCharCode, чтобы форматтеры не ломали HTML-сущности
+  const AMP = String.fromCharCode(38);   // &
+  const LT = String.fromCharCode(60);    // <
+  const GT = String.fromCharCode(62);    // >
+  const QUOT = String.fromCharCode(34);  // "
+  return String(str)
+    .replace(new RegExp(AMP, 'g'), AMP + 'amp;')
+    .replace(new RegExp(LT, 'g'), AMP + 'lt;')
+    .replace(new RegExp(GT, 'g'), AMP + 'gt;')
+    .replace(new RegExp(QUOT, 'g'), AMP + 'quot;')
+    .replace(/'/g, AMP + '#039;');
 }
 
 async function deleteEntry(id) {
@@ -369,7 +398,135 @@ async function deleteEntry(id) {
 }
 
 /* ============================================================
-   Поток добавления: фото → нейросеть → результат
+   Избранное
+   ============================================================ */
+
+function renderFavorites() {
+  const list = state.favorites;
+
+  if (!list || list.length === 0) {
+    els.favoritesSection.classList.add('hidden-section');
+    return;
+  }
+
+  els.favoritesSection.classList.remove('hidden-section');
+  els.favCount.textContent = `${list.length} сохранено`;
+  els.favoritesList.innerHTML = '';
+
+  const frag = document.createDocumentFragment();
+
+  list.forEach((fav) => {
+    const chip = document.createElement('button');
+    chip.className = 'fav-chip';
+    chip.innerHTML = `
+      <span class="fav-chip-del" data-fav-del="${fav.id}" aria-label="Удалить из избранного">✕</span>
+      <div class="fav-chip-name">${escapeHtml(fav.name)}</div>
+      <div class="fav-chip-kcal">${Math.round(fav.kcal || 0)} ккал</div>
+      <div class="fav-chip-macros">
+        <span>Б ${fmt(fav.protein)}</span>
+        <span>Ж ${fmt(fav.fats)}</span>
+        <span>У ${fmt(fav.carbs)}</span>
+      </div>
+    `;
+
+    // Клик по чипу — добавить в дневник
+    chip.addEventListener('click', (e) => {
+      if (e.target.closest('[data-fav-del]')) return;
+      addFavoriteToDiary(fav);
+    });
+
+    // Удалить из избранного
+    chip.querySelector('[data-fav-del]').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      try {
+        await DBDeleteFavorite(fav.id);
+        state.favorites = state.favorites.filter((f) => f.id !== fav.id);
+        renderFavorites();
+        showToast('Удалено из избранного');
+      } catch (err) {
+        showToast('⚠️ Не удалось удалить');
+      }
+    });
+
+    frag.appendChild(chip);
+  });
+
+  els.favoritesList.appendChild(frag);
+}
+
+async function addFavoriteToDiary(fav) {
+  const entry = {
+    name: fav.name,
+    description: fav.description || '',
+    weight: fav.weight || 0,
+    kcal: fav.kcal || 0,
+    protein: fav.protein || 0,
+    fats: fav.fats || 0,
+    carbs: fav.carbs || 0,
+    image: fav.image || '',
+    date: state.currentDate,
+    createdAt: Date.now(),
+  };
+
+  try {
+    await DBAddEntry(entry);
+    showToast('⭐ Добавлено из избранного');
+    refreshDiary();
+  } catch (e) {
+    showToast('⚠️ Не удалось добавить');
+  }
+}
+
+async function saveFavorite() {
+  const name = els.resultName.value.trim();
+  const kcal = parseFloat(els.resultCal.value);
+
+  if (!name) {
+    showToast('Введите название блюда');
+    return;
+  }
+  if (isNaN(kcal) || kcal < 0) {
+    showToast('Укажите калорийность');
+    return;
+  }
+
+  // Проверяем, есть ли уже такое блюдо в избранном
+  const exists = state.favorites.some((f) => f.name.toLowerCase() === name.toLowerCase());
+  if (exists) {
+    showToast('Это блюдо уже в избранном');
+    return;
+  }
+
+  const weight = parseFloat(els.resultWeight.value);
+  const fav = {
+    name,
+    description: els.resultDesc.value.trim() || '',
+    weight: isNaN(weight) ? 0 : Math.round(weight),
+    kcal: isNaN(kcal) ? 0 : Math.round(kcal * 10) / 10,
+    protein: isNaN(parseFloat(els.resultProtein.value)) ? 0 : Math.round(parseFloat(els.resultProtein.value) * 10) / 10,
+    fats: isNaN(parseFloat(els.resultFats.value)) ? 0 : Math.round(parseFloat(els.resultFats.value) * 10) / 10,
+    carbs: isNaN(parseFloat(els.resultCarbs.value)) ? 0 : Math.round(parseFloat(els.resultCarbs.value) * 10) / 10,
+    image: state.pendingImage || '',
+    createdAt: Date.now(),
+  };
+
+  try {
+    await DBAddFavorite(fav);
+    const all = await DBGetFavorites();
+    state.favorites = all || [];
+    renderFavorites();
+    showToast('⭐ Сохранено в избранное');
+  } catch (e) {
+    if (String(e).includes('ConstraintError')) {
+      showToast('Это блюдо уже в избранном');
+    } else {
+      showToast('⚠️ Не удалось сохранить');
+    }
+  }
+}
+
+/* ============================================================
+   Поток добавления
    ============================================================ */
 
 function openAddFlow() {
@@ -417,9 +574,7 @@ function handleFileSelect(file) {
   }
 
   const reader = new FileReader();
-  reader.onload = (e) => {
-    setPhoto(e.target.result);
-  };
+  reader.onload = (e) => setPhoto(e.target.result);
   reader.onerror = () => showToast('⚠️ Не удалось прочитать файл');
   reader.readAsDataURL(file);
 }
@@ -434,14 +589,10 @@ function setPhoto(dataUrl) {
   updateAnalyzeButton();
 }
 
-/* ---------- Обновление счётчика символов описания ---------- */
-
 function updateDescCount() {
   const len = els.addDescription.value.length;
   els.descCount.textContent = `${len} / 300`;
 }
-
-/* ---------- Обновление состояния кнопки анализа ---------- */
 
 function updateAnalyzeButton() {
   const hasImage = !!state.pendingImage;
@@ -452,7 +603,6 @@ function updateAnalyzeButton() {
 async function analyzePhoto() {
   if (state.analyzing) return;
 
-  // Проверяем наличие данных (фото или описание)
   const hasImage = !!state.pendingImage;
   const hasDesc = !!els.addDescription.value.trim();
   if (!hasImage && !hasDesc) return;
@@ -476,7 +626,6 @@ async function analyzePhoto() {
       model
     );
 
-    // Заполняем форму результата
     els.resultName.value = result.name || '';
     els.resultWeight.value = result.weight || '';
     els.resultCal.value = result.kcal || '';
@@ -485,7 +634,6 @@ async function analyzePhoto() {
     els.resultCarbs.value = result.carbs || '';
     els.resultDesc.value = state.pendingDescription || '';
 
-    // Показываем фото в результате, только если оно есть
     if (state.pendingImage) {
       els.resultPhoto.src = state.pendingImage;
       els.resultPhoto.classList.remove('hidden');
@@ -503,17 +651,14 @@ async function analyzePhoto() {
   } catch (err) {
     let msg = err.message || 'Ошибка анализа';
 
-    // Понятные сообщения
     if (err.noFood) {
       msg = 'На фото не обнаружена еда. Сделайте фото блюда и попробуйте снова.';
     } else if (err.rawStatus === 403 || err.rawStatus === 401 || /API key|permission|forbidden/i.test(msg)) {
       msg = '❌ Неверный API-ключ. Проверьте в настройках.';
     } else if (err.rawStatus === 429 || /quota|rate limit|resource exhausted/i.test(msg)) {
-      msg = '⏳ Бесплатный лимит исчерпан. Попробуйте позже или получите новый ключ.';
+      msg = '⏳ Бесплатный лимит исчерпан. Попробуйте позже.';
     } else if (/network|fetch failed|failed to fetch|ERR_INTERNET/i.test(msg)) {
       msg = '🌐 Нет соединения с интернетом. Проверьте сеть.';
-    } else if (/маркdown|```|markdown/i.test(msg)) {
-      msg = 'Модель вернула ответ в неверном формате. Попробуйте ещё раз.';
     }
 
     showToast(msg);
@@ -537,14 +682,8 @@ async function saveResult() {
   const carbs = parseFloat(els.resultCarbs.value);
   const description = els.resultDesc.value.trim();
 
-  if (!name) {
-    showToast('Введите название блюда');
-    return;
-  }
-  if (isNaN(kcal) || kcal < 0) {
-    showToast('Укажите калорийность');
-    return;
-  }
+  if (!name) { showToast('Введите название блюда'); return; }
+  if (isNaN(kcal) || kcal < 0) { showToast('Укажите калорийность'); return; }
 
   const entry = {
     name,
@@ -615,24 +754,25 @@ function saveSettingsHandler() {
 
   saveSettings(state.settings);
   applySettingsToUI();
+  refreshDiary();
   showToast('✓ Настройки сохранены');
 }
 
 async function clearDataHandler() {
-  if (!confirm('Удалить ВСЕ записи и настройки? Это действие нельзя отменить.')) return;
+  if (!confirm('Удалить ВСЕ записи, избранное и настройки? Это действие нельзя отменить.')) return;
   try {
     await clearAllData();
     state.settings = { ...DEFAULT_SETTINGS };
+    state.favorites = [];
     loadSettingsIntoForm();
     applySettingsToUI();
+    renderFavorites();
     showToast('Все данные стёрты');
     refreshDiary();
   } catch (e) {
     showToast('⚠️ Не удалось стереть данные');
   }
 }
-
-/* ---------- Инструкция по API-ключу ---------- */
 
 function showKeyInstructions() {
   const text = [
@@ -642,7 +782,7 @@ function showKeyInstructions() {
     '4. Скопируйте ключ (начинается с AIza...)',
     '5. Вставьте его в поле API-ключ и сохраните',
     '',
-    'Бесплатный тариф Gemini Flash включает ~1500 запросов в день — для 5-10 фото в день хватит с запасом.',
+    'Бесплатный тариф Gemini Flash — ~1500 запросов в день.',
   ].join('\n');
 
   alert(text);
@@ -656,9 +796,7 @@ function showToast(message) {
   els.toast.textContent = message;
   els.toast.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    els.toast.classList.remove('show');
-  }, 2800);
+  toastTimer = setTimeout(() => els.toast.classList.remove('show'), 2800);
 }
 
 /* ============================================================

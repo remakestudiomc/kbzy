@@ -2,7 +2,7 @@
    Service Worker — офлайн-режим и установка PWA
    ============================================================ */
 
-const CACHE_NAME = 'kbzy-cache-v3';
+const CACHE_NAME = 'kbzy-cache-v4';
 
 const CORE_ASSETS = [
   './',
