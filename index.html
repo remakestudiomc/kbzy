@@ -109,26 +109,6 @@
         <div class="favorites-scroll" id="favorites-list"></div>
       </section>
 
-      <!-- Мой вес -->
-      <section class="card weight-section">
-        <div class="section-head">
-          <h2>⚖️ Мой вес</h2>
-          <span class="section-sub" id="weight-sub"></span>
-        </div>
-        <div class="weight-summary">
-          <div class="weight-current">
-            <span class="weight-value" id="weight-current">—</span>
-            <span class="weight-unit">кг</span>
-          </div>
-          <div class="weight-change" id="weight-change"></div>
-        </div>
-        <div class="weight-input-row">
-          <input type="number" id="weight-input" placeholder="Ваш вес, кг" inputmode="decimal" step="0.1" min="20" max="400" autocomplete="off">
-          <button class="primary" id="btn-add-weight">Записать</button>
-        </div>
-        <div class="weight-list" id="weight-list"></div>
-      </section>
-
       <!-- Записи -->
       <section class="entries-section">
         <div class="section-head">
@@ -171,6 +151,22 @@
           <label for="set-carbs">Углеводы, г</label>
           <input type="number" id="set-carbs" min="0" step="1" inputmode="numeric" autocomplete="off">
         </div>
+      </section>
+
+      <section class="card settings-section weight-section">
+        <h2>⚖️ Мой вес</h2>
+        <div class="weight-summary">
+          <div class="weight-current">
+            <span class="weight-value" id="weight-current">—</span>
+            <span class="weight-unit">кг</span>
+          </div>
+          <div class="weight-change" id="weight-change"></div>
+        </div>
+        <div class="weight-input-row">
+          <input type="number" id="weight-input" placeholder="Ваш вес, кг" inputmode="decimal" step="0.1" min="20" max="400" autocomplete="off">
+          <button class="primary" id="btn-add-weight">Записать</button>
+        </div>
+        <div class="weight-list" id="weight-list"></div>
       </section>
 
       <section class="card settings-section">

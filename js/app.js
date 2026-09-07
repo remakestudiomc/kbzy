@@ -55,7 +55,6 @@ const els = {
   weightInput: $('weight-input'),
   btnAddWeight: $('btn-add-weight'),
   weightList: $('weight-list'),
-  weightSub: $('weight-sub'),
   weightCurrent: $('weight-current'),
   weightChange: $('weight-change'),
 
@@ -212,8 +211,10 @@ function bindEvents() {
   els.btnSaveSettings.addEventListener('click', saveSettingsHandler);
   els.btnClearData.addEventListener('click', clearDataHandler);
 
-  // Ключ: показать/скрыть
-  els.btnToggleKey.addEventListener('click', toggleKeyVisibility);
+  // Ключ: показать/скрыть (через делегирование — работает при любом состоянии DOM)
+  document.addEventListener('click', (e) => {
+    if (e.target.closest && e.target.closest('#btn-toggle-key')) toggleKeyVisibility();
+  });
 
   // Вес
   els.btnAddWeight.addEventListener('click', addWeightHandler);
@@ -867,8 +868,6 @@ async function refreshWeights() {
 
 function renderWeights() {
   const list = state.weights || [];
-
-  els.weightSub.textContent = list.length ? `${list.length} записей` : '';
 
   // Текущий вес и изменение
   if (list.length) {
