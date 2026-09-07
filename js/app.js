@@ -70,6 +70,8 @@ const els = {
   setCarbs: $('set-carbs'),
   setApiKey: $('set-api-key'),
   btnToggleKey: $('btn-toggle-key'),
+  btnCheckKey: $('btn-check-key'),
+  keyCheckStatus: $('key-check-status'),
   btnSaveSettings: $('btn-save-settings'),
   btnClearData: $('btn-clear-data'),
 
@@ -215,6 +217,7 @@ function bindEvents() {
   document.addEventListener('click', (e) => {
     if (e.target.closest && e.target.closest('#btn-toggle-key')) toggleKeyVisibility();
   });
+  els.btnCheckKey.addEventListener('click', checkKeyHandler);
 
   // Вес
   els.btnAddWeight.addEventListener('click', addWeightHandler);
@@ -961,6 +964,25 @@ function toggleKeyVisibility() {
   const isHidden = input.type === 'password';
   input.type = isHidden ? 'text' : 'password';
   els.btnToggleKey.textContent = isHidden ? '🙈' : '👁';
+}
+
+async function checkKeyHandler() {
+  if (els.btnCheckKey.disabled) return;
+  const key = els.setApiKey.value.trim();
+  if (!key) {
+    els.keyCheckStatus.textContent = 'Сначала вставьте ключ';
+    return;
+  }
+  els.btnCheckKey.disabled = true;
+  els.keyCheckStatus.textContent = 'Проверяем…';
+  try {
+    const res = await checkOpenRouterKey(key);
+    els.keyCheckStatus.textContent = res.message;
+  } catch (e) {
+    els.keyCheckStatus.textContent = '❌ Не удалось проверить. Попробуйте ещё раз.';
+  } finally {
+    els.btnCheckKey.disabled = false;
+  }
 }
 
 /* ============================================================

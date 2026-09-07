@@ -7,6 +7,10 @@
    ============================================================ */
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+// Проверка ключа (GET — возвращает данные ключа)
+const OPENROUTER_AUTH_URL = 'https://openrouter.ai/api/v1/auth/key';
+// Лёгкий запрос без авторизации — для диагностики доступности сайта
+const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
 
 // Единственная модель: умная, недорогая, отлично видит изображения.
 // При желании модель можно заменить на другую из каталога openrouter.ai/models.
@@ -69,24 +73,38 @@ async function analyzeOnce(image, description, apiKey, simple) {
 
   let resp;
   try {
-    resp = await fetch(OPENROUTER_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey,
-        'HTTP-Referer': OPENROUTER_SITE,
-        'X-Title': 'КБЖУ Дневник',
-      },
-      body: JSON.stringify({
-        model: OPENROUTER_MODEL,
-        messages: [{ role: 'user', content }],
-        response_format: { type: 'json_object' },
-        temperature: 0.2,
-        max_tokens: 800,
-      }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90000);
+    try {
+      resp = await fetch(OPENROUTER_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + apiKey,
+          'HTTP-Referer': OPENROUTER_SITE,
+          'X-Title': 'КБЖУ Дневник',
+        },
+        body: JSON.stringify({
+          model: OPENROUTER_MODEL,
+          messages: [{ role: 'user', content }],
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+          max_tokens: 800,
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
   } catch (e) {
-    throw new Error('Не удалось подключиться к OpenRouter. Проверьте интернет.');
+    if (e && e.name === 'AbortError') {
+      throw new Error('⏱ OpenRouter не отвечает (таймаут). Проверьте интернет и попробуйте ещё раз.');
+    }
+    const reachable = await checkOpenRouterConnection();
+    if (!reachable) {
+      throw new Error('🚫 Не удалось подключиться к openrouter.ai — сайт недоступен из вашей сети. Отключите VPN, блокировщик рекламы или антивирус и попробуйте ещё раз.');
+    }
+    throw new Error('Не удалось отправить запрос в OpenRouter. Попробуйте ещё раз.');
   }
 
   if (!resp.ok) {
@@ -135,6 +153,67 @@ async function buildHttpError(resp) {
   }
 
   return err;
+}
+
+/* ---------- Диагностика подключения ---------- */
+
+/**
+ * Проверка доступности OpenRouter (лёгкий запрос без авторизации).
+ * @returns {Promise<boolean>}
+ */
+async function checkOpenRouterConnection() {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const resp = await fetch(OPENROUTER_MODELS_URL, {
+      headers: { 'Accept': 'application/json' },
+      signal: controller.signal,
+    });
+    return resp.ok;
+  } catch (e) {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * Проверка API-ключа OpenRouter (для кнопки «Проверить ключ» в настройках).
+ * @param {string} apiKey
+ * @returns {Promise<{ok: boolean, message: string}>}
+ */
+async function checkOpenRouterKey(apiKey) {
+  const key = String(apiKey || '').trim();
+  if (!key) return { ok: false, message: 'Вставьте API-ключ в поле выше' };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const resp = await fetch(OPENROUTER_AUTH_URL, {
+      headers: { 'Authorization': 'Bearer ' + key, 'Accept': 'application/json' },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (resp.ok) {
+      const data = await resp.json().catch(() => null);
+      const label = data && data.label ? ` «${data.label}»` : '';
+      return { ok: true, message: `✅ Ключ действителен${label}` };
+    }
+    if (resp.status === 401) {
+      return { ok: false, message: '❌ Неверный ключ. Скопируйте его заново на openrouter.ai/keys.' };
+    }
+    return { ok: false, message: `❌ Ошибка OpenRouter (${resp.status}). Попробуйте позже.` };
+  } catch (e) {
+    clearTimeout(timeout);
+    if (e && e.name === 'AbortError') {
+      return { ok: false, message: '⏱ OpenRouter не отвечает. Проверьте интернет.' };
+    }
+    const reachable = await checkOpenRouterConnection();
+    if (!reachable) {
+      return { ok: false, message: '🚫 Сайт openrouter.ai недоступен из вашей сети. Отключите VPN/блокировщик рекламы/антивирус и повторите.' };
+    }
+    return { ok: false, message: '❌ Не удалось проверить ключ. Попробуйте ещё раз.' };
+  }
 }
 
 /* ---------- Промпты ---------- */

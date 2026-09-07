@@ -1371,6 +1371,23 @@ input[type="number"]::-webkit-outer-spin-button {
   flex-shrink: 0;
   width: 46px;
 }
+.key-check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.key-check-row .ghost {
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.key-check-status {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--text-2);
+  min-width: 0;
+}
 .hint-center.small {
   font-size: 0.74rem;
   text-align: left;
