@@ -82,7 +82,8 @@ async function analyzeOnce(image, description, apiKey, simple) {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + apiKey,
           'HTTP-Referer': OPENROUTER_SITE,
-          'X-Title': 'КБЖУ Дневник',
+          // ВАЖНО: только ASCII — браузеры запрещают кириллицу в HTTP-заголовках
+          'X-Title': 'KBJU Dnevnik',
         },
         body: JSON.stringify({
           model: OPENROUTER_MODEL,
