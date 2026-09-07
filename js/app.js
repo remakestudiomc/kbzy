@@ -11,6 +11,7 @@ const state = {
   pendingDescription: '',
   analyzing: false,
   favorites: [],
+  weights: [],
   editingEntry: null,
 };
 
@@ -50,6 +51,14 @@ const els = {
   carbsBar: $('carbs-bar'),
   entriesList: $('entries-list'),
 
+  // Вес
+  weightInput: $('weight-input'),
+  btnAddWeight: $('btn-add-weight'),
+  weightList: $('weight-list'),
+  weightSub: $('weight-sub'),
+  weightCurrent: $('weight-current'),
+  weightChange: $('weight-change'),
+
   // Избранное
   favoritesSection: $('favorites-section'),
   favoritesList: $('favorites-list'),
@@ -60,7 +69,8 @@ const els = {
   setProtein: $('set-protein'),
   setFats: $('set-fats'),
   setCarbs: $('set-carbs'),
-  setModel: $('set-model'),
+  setApiKey: $('set-api-key'),
+  btnToggleKey: $('btn-toggle-key'),
   btnSaveSettings: $('btn-save-settings'),
   btnClearData: $('btn-clear-data'),
 
@@ -126,6 +136,7 @@ async function init() {
     state.favorites = [];
   }
   renderFavorites();
+  await refreshWeights();
   await refreshDiary();
 }
 
@@ -200,6 +211,15 @@ function bindEvents() {
   // Настройки
   els.btnSaveSettings.addEventListener('click', saveSettingsHandler);
   els.btnClearData.addEventListener('click', clearDataHandler);
+
+  // Ключ: показать/скрыть
+  els.btnToggleKey.addEventListener('click', toggleKeyVisibility);
+
+  // Вес
+  els.btnAddWeight.addEventListener('click', addWeightHandler);
+  els.weightInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addWeightHandler();
+  });
 }
 
 /* ============================================================
@@ -625,15 +645,15 @@ async function analyzePhoto() {
   const hasDesc = !!els.addDescription.value.trim();
   if (!hasImage && !hasDesc) return;
 
-  const { model } = state.settings;
+  const { openrouterKey } = state.settings;
   state.analyzing = true;
   showFlow('flow-loading');
 
   try {
-    const result = await geminiAnalyzeFood(
+    const result = await openrouterAnalyzeFood(
       state.pendingImage,
       state.pendingDescription,
-      model
+      openrouterKey
     );
 
     els.resultName.value = result.name || '';
@@ -663,10 +683,8 @@ async function analyzePhoto() {
 
     if (err.noFood) {
       msg = 'На фото не видно еды. Попробуйте сфотографировать блюдо ещё раз.';
-    } else if (err.rawStatus === 403 || err.rawStatus === 401 || /API key|permission|forbidden/i.test(msg)) {
-      msg = '❌ Неверный API-ключ. Проверьте в настройках.';
-    } else if (err.rawStatus === 429 || /quota|rate limit|resource exhausted/i.test(msg)) {
-      msg = '⏳ Бесплатный лимит исчерпан. Попробуйте позже.';
+    } else if (err.needKey) {
+      msg = '🔑 Вставьте API-ключ OpenRouter в настройках';
     } else if (/network|fetch failed|failed to fetch|ERR_INTERNET/i.test(msg)) {
       msg = '🌐 Нет соединения с интернетом. Проверьте сеть.';
     }
@@ -777,7 +795,7 @@ function loadSettingsIntoForm() {
   els.setProtein.value = s.protein;
   els.setFats.value = s.fats;
   els.setCarbs.value = s.carbs;
-  els.setModel.value = s.model;
+  els.setApiKey.value = s.openrouterKey || '';
 }
 
 function applySettingsToUI() {
@@ -806,7 +824,7 @@ function saveSettingsHandler() {
     protein: protein || 0,
     fats: fats || 0,
     carbs: carbs || 0,
-    model: els.setModel.value,
+    openrouterKey: els.setApiKey.value.trim(),
   };
 
   saveSettings(state.settings);
@@ -821,14 +839,129 @@ async function clearDataHandler() {
     await clearAllData();
     state.settings = { ...DEFAULT_SETTINGS };
     state.favorites = [];
+    state.weights = [];
     loadSettingsIntoForm();
     applySettingsToUI();
     renderFavorites();
+    renderWeights();
     showToast('Все данные стёрты');
     refreshDiary();
   } catch (e) {
     showToast('⚠️ Не удалось стереть данные');
   }
+}
+
+/* ============================================================
+   Вес
+   ============================================================ */
+
+async function refreshWeights() {
+  try {
+    const all = await DBGetWeights();
+    state.weights = (all || []).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  } catch (e) {
+    state.weights = [];
+  }
+  renderWeights();
+}
+
+function renderWeights() {
+  const list = state.weights || [];
+
+  els.weightSub.textContent = list.length ? `${list.length} записей` : '';
+
+  // Текущий вес и изменение
+  if (list.length) {
+    const latest = list[0];
+    const prev = list[1];
+    els.weightCurrent.textContent = formatWeight(latest.weight);
+
+    if (prev && prev.weight !== undefined) {
+      const diff = latest.weight - prev.weight;
+      const sign = diff > 0 ? '+' : diff < 0 ? '−' : '';
+      els.weightChange.textContent = `${sign}${Math.abs(diff).toFixed(1)} кг с прошлой записи`;
+      els.weightChange.className = 'weight-change' + (diff > 0.15 ? ' up' : diff < -0.15 ? ' down' : '');
+    } else {
+      els.weightChange.textContent = '';
+      els.weightChange.className = 'weight-change';
+    }
+  } else {
+    els.weightCurrent.textContent = '—';
+    els.weightChange.textContent = 'Начните отслеживать вес';
+    els.weightChange.className = 'weight-change';
+  }
+
+  // Список
+  els.weightList.innerHTML = '';
+  if (!list.length) {
+    els.weightList.innerHTML = '<div class="weight-empty">Записей веса пока нет</div>';
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  list.forEach((w) => {
+    const row = document.createElement('div');
+    row.className = 'weight-row';
+    row.innerHTML = `
+      <span class="weight-row-date">${formatDateTime(w.createdAt)}</span>
+      <span class="weight-row-val">${formatWeight(w.weight)} <small>кг</small></span>
+      <button class="weight-row-del" data-id="${w.id}" aria-label="Удалить">✕</button>
+    `;
+    row.querySelector('.weight-row-del').addEventListener('click', () => deleteWeight(w.id));
+    frag.appendChild(row);
+  });
+  els.weightList.appendChild(frag);
+}
+
+function formatWeight(v) {
+  const n = parseFloat(v);
+  if (isNaN(n)) return '—';
+  return n.toFixed(1).replace('.', ',');
+}
+
+async function addWeightHandler() {
+  const value = parseFloat(els.weightInput.value.replace(',', '.'));
+  if (isNaN(value) || value <= 0) {
+    showToast('Введите вес в килограммах');
+    els.weightInput.focus();
+    return;
+  }
+  if (value < 20 || value > 400) {
+    showToast('Введите реалистичный вес (20–400 кг)');
+    els.weightInput.focus();
+    return;
+  }
+
+  try {
+    await DBAddWeight({
+      weight: Math.round(value * 10) / 10,
+      date: todayStr(),
+      createdAt: Date.now(),
+    });
+    els.weightInput.value = '';
+    showToast('✓ Вес записан');
+    await refreshWeights();
+  } catch (e) {
+    showToast('⚠️ Не удалось сохранить вес');
+  }
+}
+
+async function deleteWeight(id) {
+  if (!confirm('Удалить запись о весе?')) return;
+  try {
+    await DBDeleteWeight(id);
+    showToast('🗑 Запись удалена');
+    await refreshWeights();
+  } catch (e) {
+    showToast('⚠️ Не удалось удалить запись');
+  }
+}
+
+function toggleKeyVisibility() {
+  const input = els.setApiKey;
+  const isHidden = input.type === 'password';
+  input.type = isHidden ? 'text' : 'password';
+  els.btnToggleKey.textContent = isHidden ? '🙈' : '👁';
 }
 
 /* ============================================================

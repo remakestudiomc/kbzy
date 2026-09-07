@@ -4,7 +4,7 @@
    кеш используем только если сеть недоступна (офлайн).
    ============================================================ */
 
-const CACHE_NAME = 'kbzy-cache-v16';
+const CACHE_NAME = 'kbzy-cache-v17';
 
 const CORE_ASSETS = [
   './',
@@ -50,8 +50,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
-  // Не кешируем запросы к API Gemini
-  if (request.url.includes('generativelanguage.googleapis.com')) return;
+  // Не кешируем запросы к OpenRouter (API-ключ и приватные данные)
+  if (request.url.includes('openrouter.ai')) return;
 
   // Только GET
   if (request.method !== 'GET') return;

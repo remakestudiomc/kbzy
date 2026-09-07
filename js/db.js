@@ -1,14 +1,15 @@
 /* ============================================================
    Модуль хранения данных
-   - localStorage:  настройки (КБЖУ, API-ключ, модель)
-   - IndexedDB:     записи дневника с фото (для больших картинок)
+   - localStorage:  настройки (КБЖУ, API-ключ OpenRouter)
+   - IndexedDB:     записи дневника с фото и записи веса
    ============================================================ */
 
 const DB_NAME = 'kbzy-diary';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_ENTRIES = 'entries';
 const STORE_SETTINGS = 'settings';
 const STORE_FAVORITES = 'favorites';
+const STORE_WEIGHTS = 'weights';
 
 const SETTINGS_KEY = 'kbzy-settings';
 
@@ -33,6 +34,9 @@ function openDB() {
       }
       if (!db.objectStoreNames.contains(STORE_FAVORITES)) {
         db.createObjectStore(STORE_FAVORITES, { keyPath: 'id', autoIncrement: true });
+      }
+      if (!db.objectStoreNames.contains(STORE_WEIGHTS)) {
+        db.createObjectStore(STORE_WEIGHTS, { keyPath: 'id', autoIncrement: true });
       }
     };
 
@@ -142,40 +146,17 @@ const DEFAULT_SETTINGS = {
   protein: 100,
   fats: 70,
   carbs: 250,
-  // URL Cloudflare Worker — нейросеть вызывается через него,
-  // реальный ключ Gemini хранится только на Cloudflare (секрет)
-  // Захардкожен: настраивать больше не нужно
-  workerUrl: 'https://kbzy-proxy.roma-oreshkin-01.workers.dev',
-  model: 'auto',
+  // API-ключ OpenRouter. Хранится ТОЛЬКО в localStorage этого браузера,
+  // никогда не публикуется в коде сайта и недоступен другим посетителям.
+  openrouterKey: '',
 };
-
-// Актуальные модели (синхронизировано с js/api.js)
-const SUPPORTED_MODELS = [
-  'auto',
-  'gemini-flash-latest',
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
-  'gemini-2.0-flash-preview',
-];
 
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return { ...DEFAULT_SETTINGS };
     const parsed = JSON.parse(raw);
-    const merged = { ...DEFAULT_SETTINGS, ...parsed };
-
-    // Если сохранена устаревшая модель (например gemini-2.0-flash) — заменяем на авто
-    if (!SUPPORTED_MODELS.includes(merged.model)) {
-      merged.model = 'auto';
-    }
-
-    // Если значение пустое — тоже авто
-    if (!merged.model) {
-      merged.model = 'auto';
-    }
-
-    return merged;
+    return { ...DEFAULT_SETTINGS, ...parsed };
   } catch (e) {
     return { ...DEFAULT_SETTINGS };
   }
@@ -187,7 +168,25 @@ function saveSettings(settings) {
 
 function clearAllData() {
   localStorage.removeItem(SETTINGS_KEY);
-  return Promise.all([DBClearEntries(), tx(STORE_FAVORITES, 'readwrite', (store) => store.clear())]);
+  return Promise.all([
+    DBClearEntries(),
+    tx(STORE_FAVORITES, 'readwrite', (store) => store.clear()),
+    tx(STORE_WEIGHTS, 'readwrite', (store) => store.clear()),
+  ]);
+}
+
+/* ---------- Записи веса ---------- */
+
+async function DBAddWeight(weight) {
+  return tx(STORE_WEIGHTS, 'readwrite', (store) => store.add(weight));
+}
+
+async function DBGetWeights() {
+  return tx(STORE_WEIGHTS, 'readonly', (store) => store.getAll());
+}
+
+async function DBDeleteWeight(id) {
+  return tx(STORE_WEIGHTS, 'readwrite', (store) => store.delete(id));
 }
 
 /* ---------- Утилиты ---------- */
@@ -223,4 +222,9 @@ function addDays(dateStr, delta) {
 function formatTime(ts) {
   const d = new Date(ts);
   return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+
+function formatDateTime(ts) {
+  if (!ts) return '';
+  return `${formatDateRu(formatDate(new Date(ts)))}, ${formatTime(ts)}`;
 }

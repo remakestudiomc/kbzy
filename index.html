@@ -109,6 +109,26 @@
         <div class="favorites-scroll" id="favorites-list"></div>
       </section>
 
+      <!-- Мой вес -->
+      <section class="card weight-section">
+        <div class="section-head">
+          <h2>⚖️ Мой вес</h2>
+          <span class="section-sub" id="weight-sub"></span>
+        </div>
+        <div class="weight-summary">
+          <div class="weight-current">
+            <span class="weight-value" id="weight-current">—</span>
+            <span class="weight-unit">кг</span>
+          </div>
+          <div class="weight-change" id="weight-change"></div>
+        </div>
+        <div class="weight-input-row">
+          <input type="number" id="weight-input" placeholder="Ваш вес, кг" inputmode="decimal" step="0.1" min="20" max="400" autocomplete="off">
+          <button class="primary" id="btn-add-weight">Записать</button>
+        </div>
+        <div class="weight-list" id="weight-list"></div>
+      </section>
+
       <!-- Записи -->
       <section class="entries-section">
         <div class="section-head">
@@ -155,26 +175,15 @@
 
       <section class="card settings-section">
         <h2>🤖 Нейросеть</h2>
-        <p class="hint-center">Готово — нейросеть подключена автоматически. Ключ Gemini хранится только на Cloudflare Worker и не виден в коде приложения.</p>
+        <p class="hint-center">Для распознавания блюд приложение обращается к <b>OpenRouter</b> (модель Google Gemini 2.5 Flash). Вставьте ваш личный API-ключ — он хранится только в этом браузере и отправляется напрямую в OpenRouter.</p>
         <div class="field" style="margin-top: 12px;">
-          <label for="set-model">Модель</label>
-          <select id="set-model">
-            <option value="auto">🤖 Автоматически (рекомендуется)</option>
-            <option value="gemini-flash-latest">Gemini Flash Latest</option>
-            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-            <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
-            <option value="gemini-2.0-flash-preview">Gemini 2.0 Flash Preview</option>
-          </select>
+          <label for="set-api-key">API-ключ OpenRouter</label>
+          <div class="key-input-row">
+            <input type="password" id="set-api-key" placeholder="sk-or-v1-…" autocomplete="off" spellcheck="false">
+            <button type="button" class="icon-btn soft key-toggle" id="btn-toggle-key" aria-label="Показать/скрыть ключ">👁</button>
+          </div>
+          <p class="hint-center small">Ключ создаётся бесплатно на <b>openrouter.ai/keys</b>. Без ключа распознавание фото не работает, но вести дневник можно.</p>
         </div>
-      </section>
-
-      <section class="card settings-section">
-        <h2>📱 Установка на телефон</h2>
-        <ol class="help-list">
-          <li>Откройте адрес приложения в Chrome на Android</li>
-          <li>Меню ⋮ → «Добавить на главный экран» или «Установить приложение»</li>
-          <li>Иконка появится на рабочем столе — запускайте как обычное приложение</li>
-        </ol>
       </section>
 
       <div class="settings-actions">
