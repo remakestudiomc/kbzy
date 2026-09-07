@@ -104,7 +104,7 @@ async function analyzeOnce(image, description, apiKey, simple) {
     if (!reachable) {
       throw new Error('🚫 Не удалось подключиться к openrouter.ai — сайт недоступен из вашей сети. Отключите VPN, блокировщик рекламы или антивирус и попробуйте ещё раз.');
     }
-    throw new Error('Не удалось отправить запрос в OpenRouter. Попробуйте ещё раз.');
+    throw new Error('Не удалось отправить запрос в OpenRouter (' + (e.name || 'сеть') + '). Сайт доступен, но запрос блокируется — отключите VPN/блокировщик/антивирус и повторите.');
   }
 
   if (!resp.ok) {
@@ -212,7 +212,7 @@ async function checkOpenRouterKey(apiKey) {
     if (!reachable) {
       return { ok: false, message: '🚫 Сайт openrouter.ai недоступен из вашей сети. Отключите VPN/блокировщик рекламы/антивирус и повторите.' };
     }
-    return { ok: false, message: '❌ Не удалось проверить ключ. Попробуйте ещё раз.' };
+    return { ok: false, message: '❌ Не удалось проверить ключ (' + (e.name || 'ошибка') + '). Попробуйте ещё раз.' };
   }
 }
 

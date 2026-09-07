@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Диагностика OpenRouter — КБЖУ</title>
+<style>
+  body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background:#fff7f0; color:#332; max-width:600px; margin:0 auto; padding:16px; }
+  h1 { font-size:20px; color:#e8590c; }
+  p { font-size:14px; line-height:1.5; }
+  label { display:block; margin:12px 0 4px; font-weight:600; }
+  input { width:100%; padding:10px; border:1px solid #f0a878; border-radius:10px; box-sizing:border-box; font-size:15px; }
+  button { margin-top:14px; width:100%; padding:12px; background:#e8590c; color:#fff; border:none; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; }
+  button:disabled { opacity:.6; }
+  .row { background:#fff; border:1px solid #ffe0cc; border-radius:10px; padding:10px 12px; margin-top:10px; font-size:14px; }
+  .row b { display:block; margin-bottom:4px; }
+  .ok { color:#2b8a3e; } .fail { color:#c92a2a; } .wait { color:#868e96; }
+  .hint { background:#fff4e6; border-radius:10px; padding:10px 12px; margin-top:12px; font-size:14px; line-height:1.5; }
+  #copyBtn { background:#495057; margin-top:8px; font-size:14px; }
+  small { color:#868e96; }
+</style>
+</head>
+<body>
+  <h1>🔌 Диагностика OpenRouter</h1>
+  <p>Проверяет по шагам, где рвётся соединение. <b>Ключ отправляется только в OpenRouter</b> и не попадает в результаты/файлы.</p>
+  <label for="key">API-ключ OpenRouter (подставится сам, если сохранён в приложении)</label>
+  <input type="password" id="key" placeholder="sk-or-v1-...">
+  <button id="run">▶ Запустить тест</button>
+  <div id="res"></div>
+  <div class="hint" id="hint" hidden></div>
+  <button id="copyBtn" hidden>📋 Скопировать результаты</button>
+  <p><small id="ua"></small></p>
+
+<script>
+(function () {
+  var uaEl = document.getElementById('ua');
+  uaEl.textContent = 'Браузер: ' + navigator.userAgent;
+
+  // Подставляем ключ из настроек приложения (если сохранены в этом браузере)
+  try {
+    var raw = localStorage.getItem('kbzy-settings');
+    if (raw) {
+      var s = JSON.parse(raw);
+      if (s && s.openrouterKey) document.getElementById('key').value = s.openrouterKey;
+    }
+  } catch (e) {}
+
+  var keyInput = document.getElementById('key');
+  var runBtn = document.getElementById('run');
+  var resEl = document.getElementById('res');
+  var hintEl = document.getElementById('hint');
+  var copyBtn = document.getElementById('copyBtn');
+
+  function addRow(title, status, html) {
+    var row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = '<b>' + title + '</b><span class="' + status + '">' + html + '</span>';
+    resEl.appendChild(row);
+    return row.querySelector('span');
+  }
+
+  async function probe(name, fn) {
+    var span = addRow(name, 'wait', '⏳ …');
+    try {
+      var text = await fn();
+      span.className = 'ok';
+      span.textContent = '✅ ' + text;
+      return { name: name, ok: true, text: text };
+    } catch (e) {
+      var msg = (e && e.name ? e.name + ': ' : '') + (e && e.message ? e.message : 'ошибка');
+      span.className = 'fail';
+      span.textContent = '❌ ' + msg;
+      return { name: name, ok: false, text: msg };
+    }
+  }
+
+  runBtn.addEventListener('click', async function () {
+    var key = keyInput.value.trim();
+    resEl.innerHTML = '';
+    hintEl.hidden = true;
+    copyBtn.hidden = true;
+    if (!key) {
+      addRow('Ключ', 'fail', '❌ Вставьте API-ключ в поле выше');
+      return;
+    }
+    runBtn.disabled = true;
+    var results = [];
+
+    results.push(await probe('1. Сайт openrouter.ai (GET /models, без ключа)', async function () {
+      var r = await fetch('https://openrouter.ai/api/v1/models');
+      return 'HTTP ' + r.status;
+    }));
+
+    results.push(await probe('2. Проверка ключа (GET /auth/key)', async function () {
+      var r = await fetch('https://openrouter.ai/api/v1/auth/key', {
+        headers: { Authorization: 'Bearer ' + key }
+      });
+      var j = await r.json().catch(function () { return null; });
+      if (!r.ok) throw new Error('HTTP ' + r.status + (j && j.error && j.error.message ? ': ' + j.error.message : ''));
+      return 'HTTP ' + r.status;
+    }));
+
+    results.push(await probe('3. POST с текстом (как в приложении)', async function () {
+      var r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + key,
+          'HTTP-Referer': 'https://github.com/remakestudiomc/kbzy',
+          'X-Title': 'КБЖУ Дневник'
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [{ role: 'user', content: [{ type: 'text', text: 'Ответь одним словом: работает' }] }],
+          max_tokens: 20
+        })
+      });
+      var j = await r.json().catch(function () { return null; });
+      if (!r.ok) throw new Error('HTTP ' + r.status + (j && j.error && j.error.message ? ': ' + j.error.message : ''));
+      return 'HTTP ' + r.status + ' — ответ: ' + (j && j.choices && j.choices[0] ? JSON.stringify(j.choices[0].message.content) : '?');
+    }));
+
+    results.push(await probe('4. POST с картинкой (как в приложении)', async function () {
+      var b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+      var r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + key,
+          'HTTP-Referer': 'https://github.com/remakestudiomc/kbzy',
+          'X-Title': 'КБЖУ Дневник'
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Есть ли еда на фото? Ответь да или нет' },
+              { type: 'image_url', image_url: { url: 'data:image/png;base64,' + b64 } }
+            ]
+          }],
+          max_tokens: 30
+        })
+      });
+      var j = await r.json().catch(function () { return null; });
+      if (!r.ok) throw new Error('HTTP ' + r.status + (j && j.error && j.error.message ? ': ' + j.error.message : ''));
+      return 'HTTP ' + r.status + ' — ответ: ' + (j && j.choices && j.choices[0] ? JSON.stringify(j.choices[0].message.content) : '?');
+    }));
+
+    var okCount = results.filter(function (x) { return x.ok; }).length;
+    var verdict = document.createElement('div');
+    verdict.className = 'hint';
+    if (okCount === 4) {
+      verdict.innerHTML = '🎉 <b>Всё работает!</b> Соединение, ключ и запросы в порядке. Если приложение всё равно не анализирует — обновите страницу приложения (закройте вкладку и откройте заново).';
+    } else if (results[0] && !results[0].ok) {
+      verdict.innerHTML = '🌐 <b>Сайт openrouter.ai недоступен из этой сети.</b> Отключите VPN/антивирус/блокировщик рекламы или переключитесь на другую сеть (Wi-Fi ↔ мобильный интернет).';
+    } else if (results[1] && !results[1].ok) {
+      verdict.innerHTML = '🔑 <b>Проблема с ключом или его проверкой.</b> Скопируйте ключ заново на openrouter.ai/keys.';
+    } else if ((results[2] && !results[2].ok) || (results[3] && !results[3].ok)) {
+      verdict.innerHTML = '⛔ <b>Сайт отвечает, но отправка запроса (POST) блокируется.</b> Это делают блокировщики рекламы, расширения браузера, антивирус или VPN. Попробуйте: режим инкогнито → другой браузер (Edge) → временно отключить антивирус/расширения → другой интернет (мобильные данные вместо Wi-Fi).';
+    }
+    hintEl.innerHTML = verdict.innerHTML;
+    hintEl.hidden = false;
+
+    var text = 'Диагностика KBZY\n' +
+      'Браузер: ' + navigator.userAgent + '\n' +
+      results.map(function (r) { return (r.ok ? '✅' : '❌') + ' ' + r.name + ' — ' + r.text; }).join('\n');
+    copyBtn.hidden = false;
+    copyBtn.onclick = function () {
+      navigator.clipboard.writeText(text).then(function () {
+        copyBtn.textContent = '✓ Скопировано';
+        setTimeout(function () { copyBtn.textContent = '📋 Скопировать результаты'; }, 2000);
+      }).catch(function () {});
+    };
+
+    runBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>
