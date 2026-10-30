@@ -1,128 +1,104 @@
 # КБЖУ Дневник (KBZY) — контекст для передачи другой нейросети
 
-**Репозиторий:** https://github.com/remakestudiomc/kbzy  
-**GitHub Pages:** https://remakestudiomc.github.io/kbzy/  
-**Последний коммит:** `f7e5321` — Fix date picker and over-limit ring; add swipe, undo delete, polish cards  
-**Ветка:** master  
+**Репозиторий:** https://github.com/remakestudiomc/kbzy
+**GitHub Pages:** https://remakestudiomc.github.io/kbzy/
+**Ветка:** master
 **Язык:** русский (все сообщения пользователю — на русском)
 
-## 1. О чём проект
+## 1. Что это
 
-PWA «КБЖУ дневник» — учёт питания с анализом фото блюд через нейросеть.  
-Пользователь фотографирует еду (или пишет описание) → запрос в **OpenRouter** (модель `google/gemini-2.5-flash`) → JSON с названием, весом, калориями, БЖУ.
+PWA для учёта питания: фото или описание блюда → OpenRouter (`google/gemini-2.5-flash`) → JSON с КБЖУ.
+Чистый HTML/JS без сборщика, хостинг — GitHub Pages. API-ключ только в localStorage пользователя.
 
-**Архитектура:** чистый HTML/JS, без сборщика. Хостинг — GitHub Pages.  
-Service Worker с network-first (кеш только при отсутствии сети).  
-API-ключ OpenRouter **только в localStorage** пользователя, никогда не в коде/гите.
+Проект личный, один пользователь. Приложение кастомизируется под него: профиль (пол/возраст/рост/вес/цель)
+передаётся в промпт, нормы считаются по Миффлину–Сан Жеору.
 
-## 2. Что уже сделано (история изменений)
+## 2. Версия 2.0 — что изменилось
 
 | Коммит | Что |
 |---|---|
-| `f7e5321` | Календарь (`#date-picker`) был `display:none` — `showPicker()` требует отрисованный элемент, кнопка даты не работала. Теперь класс `.visually-hidden`. Кольцо калорий краснеет при превышении (раньше сравнивался уже обрезанный процент). Кнопка «Цель» открывает настройки нормы. Свайп/стрелки — переключение дней, вперёд дальше сегодня нельзя. Удаление записи отменяется кнопкой в тосте (confirm убран). |
-| `51837c5` | **Исправлена главная ошибка:** `X-Title: 'КБЖУ Дневник'` → `'KBJU Dnevnik'` (кириллица в HTTP-заголовке вызывала `TypeError: String contains non ISO-8859-1 code point` в браузере, запрос не уходил из браузера). |
-| `71ac11a` | Страница диагностики `diagnostic.html` (4 шага проверки соединения/ключа/POST-запросов). Улучшены сообщения об ошибках. |
-| `db2e20b` | `.env` добавлен в `.gitignore` и закоммичен. |
-| `2ed5338` | Кнопка проверки ключа, сетевая диагностика, таймауты, cache v19. |
+| 2.0 | Полный редизайн (тёмная/светлая тема, Lucide-иконки инлайн), приёмы пищи, авто-пересчёт КБЖУ, редактирование избранного, копирование записей между днями, статистика, профиль и нормы, экспорт/импорт, уточнение расчёта словами |
 
-**Текущее состояние:** всё в гите, изменения пушнуты в `origin/master`, GitHub Pages обновлён.
+До этого: `f7e5321` (календарь/кольцо/свайп/undo), `51837c5` (кириллица в `X-Title`), `71ac11a` (диагностика).
 
-
-## 3. Ключевые файлы
+## 3. Архитектура
 
 ```
-js/api.js          — логика запросов к OpenRouter (анализ фото, проверка ключа, сжатие картинки)
-js/app.js          — основной UI, IndexedDB, отрисовка записей
-js/db.js           — IndexedDB wrapper (записи, избранное, вес, настройки)
-sw.js              — Service Worker, офлайн, PWA-кеширование
-index.html         — главная страница
-manifest.webmanifest — манифест PWA
-diagnostic.html    — автономная страница диагностики OpenRouter
-.env               — локально: API-ключ OpenRouter (НЕ в гите, в .gitignore)
-scripts/verify.py  — скрипт проверки структуры проекта
+index.html          — разметка всех экранов (дневник, статистика, настройки, оверлей добавления, нижний лист)
+css/style.css       — дизайн-система на CSS-переменных, темы через [data-theme]
+js/icons.js         — пути Lucide в объекте ICON_PATHS + icon()/renderIcons()
+js/db.js            — IndexedDB + настройки + экспорт/импорт + утилиты дат
+js/api.js           — запрос в OpenRouter, промпт, парсинг, сжатие фото
+js/app.js           — вся логика UI
+sw.js               — network-first кеш (CACHE_NAME = kbzy-cache-v22)
 ```
 
-**Модель:** `google/gemini-2.5-flash`  
-**API:** `https://openrouter.ai/api/v1/chat/completions`  
-**Заголовки:** `Content-Type`, `Authorization: Bearer <key>`, `HTTP-Referer`, `X-Title: KBJU Dnevnik` (только ASCII!)  
-**Сжатие картинки:** ~1024 px по длинной стороне, ~1.2 Мп, качество 0.75 JPEG  
-**Таймаут:** 90 секунд
+### Важные соглашения
 
+- **Все файлы — обычные `<script>`, общая глобальная область.** Любое совпадающее имя на верхнем уровне
+  (например `const round1` в `app.js` и `function round1` в `api.js`) роняет **весь** файл с
+  `Identifier 'round1' has already been declared`, причём молча — интерфейс просто не оживает.
+  Проверять `node --check` недостаточно, смотреть консоль браузера.
+- **Один делегированный обработчик** `onActionClick` на `document`, все кнопки — `data-action="..."`.
+  `verify.py` проверяет, что у каждого `data-action` из HTML есть `case` в `app.js`.
+- **`[hidden] { display: none !important; }`** — иначе классы с `display:block/flex` перебивают атрибут
+  (было с битым `<img>` и кнопкой «Другое фото»).
+- **Никаких CDN.** Иконки — инлайн SVG, шрифты системные. Приложение должно работать офлайн.
+- **`X-Title` в заголовке запроса — только ASCII.** Кириллица ломает `fetch` в браузере.
+- **Дата-пикер**: `input[type=date]` скрыт классом `.visually-hidden` (1×1, opacity 0), а не `display:none`,
+  иначе `showPicker()` бросает исключение.
 
-## 4. Баг, который был исправлен (важно!)
+## 4. Модель данных
 
-**Симптом:** пользователь нажимал «Анализировать», в консоли браузера `TypeError: Failed to execute 'fetch' ... String contains non ISO-8859-1 code point`. Запрос не уходил из браузера. GET-запросы (проверка ключа) работали, POST — нет.
-
-**Причина:** в заголовке `X-Title` была кириллица `'КБЖУ Дневник'`. Стандарт Fetch запрещает не-ASCII символы в HTTP-заголовках. Браузер кидает TypeError до отправки запроса.
-
-**Фикс:** `'X-Title': 'KBJU Dnevnik'` (только латиница).
-
-> ⚠️ Если другая нейросеть будет править `js/api.js` — не возвращай кириллицу в `X-Title` и другие HTTP-заголовки. Кириллица разрешена только в теле запроса (промпт, описание) — там используется JSON с UTF-8.
-
-
-## 5. Как подключить эту нейросеть к GitHub (чтобы она могла вносить изменения напрямую)
-
-### Способ А — через Composio (рекомендуется)
-
-1. Выполни `composio_search_tools` с запросом `"connect GitHub toolkit"`.
-2. Выполни `composio_manage_connections` с `toolkits: ["github"]` — получишь ссылку на авторизацию.
-3. Пройди авторизацию на сайте GitHub, подтверди доступ.
-4. Выполни `composio_wait_for_connections` с `toolkits: ["github"]`, `mode: "all"` — дождись состояния `ACTIVE`.
-5. Используй `composio_multi_execute_tool` с GitHub-инструментами:
-   - `GITHUB_GET_CONTENTS` — прочитать файл из репозитория
-   - `GITHUB_CREATE_A_FILE` — создать файл
-   - `GITHUB_UPDATE_A_FILE` — обновить существующий файл
-   - `GITHUB_CREATE_A_PULL_REQUEST` — создать PR
-   - `GITHUB_LIST_COMMITS` — история коммитов
-
-Пример вызова:
-```json
-{"tools": [{"tool_slug": "GITHUB_GET_CONTENTS", "arguments": {"owner": "remakestudiomc", "repo": "kbzy", "path": "js/api.js"}}], "sync_response_to_workbench": false}
+```js
+entry  = { id, name, meal, weight, kcal, protein, fats, carbs, description, image, date, createdAt }
+fav    = { id, name, weight, kcal, protein, fats, carbs, description, createdAt }
+weight = { id, weight, date, createdAt }
 ```
 
-### Способ Б — через Git REST API (PAT)
+- `meal` ∈ `breakfast | lunch | dinner | snack` (у старых записей поля нет — трактуется как `snack`)
+- `date` — строка `YYYY-MM-DD`
+- `image` — уменьшенное превью (400 px, JPEG 0.62), в API уходит отдельно сжатое 1024 px
+- База: `kbzy-diary`, версия **3**, сторы `entries`/`settings`/`favorites`/`weights` — **не менять**,
+  иначе потеряются данные пользователя
+- Настройки в `localStorage['kbzy-settings']`: нормы, `openrouterKey`, `model`, `theme`, `profile`
 
-1. Создай токен на `github.com/settings/tokens` с правами `repo`.
-2. `GET https://api.github.com/repos/remakestudiomc/kbzy/contents/js/api.js` — получить файл
-3. `PUT https://api.github.com/repos/remakestudiomc/kbzy/contents/js/api.js` — обновить (base64-содержимое, message, sha, branch)
-4. Заголовок: `Authorization: Bearer <TOKEN>`
-
-### Способ В — локальный git
+## 5. Как проверять
 
 ```bash
-git clone https://github.com/remakestudiomc/kbzy.git
-# вносишь изменения
-git add . && git commit -m "описание"
-git push origin master
-# GitHub Pages автоматически пересоберёт сайт (1–2 минуты)
+node --check js/app.js
+python scripts/verify.py        # нужен Pillow
 ```
 
-## 6. Как проверять изменения перед пушем
+Визуальная проверка — headless Chromium:
 
 ```bash
-cd /путь/к/kbzy
-node --check js/api.js          # проверка синтаксиса JS
-python scripts/verify.py         # полная проверка структуры проекта
+python -m http.server 8099 --bind 127.0.0.1   # в фоне
+playwright-cli open "http://127.0.0.1:8099/index.html"
+playwright-cli resize 390 844
+playwright-cli eval "async () => { await DBAddEntry({...}); await refreshDiary(); return 'ok'; }"
+playwright-cli screenshot
 ```
 
-`verify.py` проверяет: наличие файлов, валидность манифеста и размеров иконок, отсутствие API-ключа в коде, соответствие id в HTML и JS.
+Сессия `playwright-cli` живёт только внутри одной bash-команды — open/resize/eval/screenshot
+надо объединять в одну цепочку. Контекст браузера каждый раз чистый, IndexedDB пустая: данные
+засевать в том же вызове. Все функции из `app.js` доступны глобально, поэтому тестировать
+логику можно напрямую (`fillResult(...)`, `openEntryMenu(id)`, `deleteEntry(id)`).
 
-## 7. Безопасность (критично)
+Ключ для проверки API можно взять из локального `.env` (он в `.gitignore`, сервер его раздаёт):
+`const env = await (await fetch('/.env')).text()`.
 
-- `.env` содержит `KEY=sk-or-v1-...` — **никогда не коммить его**. Он в `.gitignore`.
-- Ключ пользователя в `localStorage['kbzy-settings']` → `openrouterKey`.
-- В коде не должно быть строк `sk-or-v1-...` или `AIza...`.
-- `diagnostic.html` не печатает ключ в результаты.
+## 6. Деплой
 
-## 8. Шпаргалка для следующей нейросети
-
-```
-Репозиторий: remakestudiomc/kbzy (master).
-Сайт: remakestudiomc.github.io/kbzy.
-Не трогай: .env, X-Title заголовок (только ASCII).
-Проверка: python scripts/verify.py.
-Деплой: git push origin master → GitHub Pages автоматически.
-Язык с пользователем: русский.
+```bash
+git add -A && git commit -m "..." && git push origin master
 ```
 
-Статус: проект работает, баг с кириллицей в заголовке исправлен и задеплоен.
+GitHub Pages пересобирает сайт за 1–2 минуты. Service worker network-first, поэтому новая
+версия подтягивается сама; при изменении списка файлов в `CORE_ASSETS` поднимать `CACHE_NAME`.
+
+## 7. Безопасность
+
+- `.env` с `KEY=sk-or-v1-...` — никогда не коммитить
+- В коде не должно быть `sk-or-v1-...` и `AIza...` (проверяется `verify.py`)
+- `verify.py` не даёт вернуть кириллицу в `X-Title`

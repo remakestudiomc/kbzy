@@ -4,13 +4,14 @@
    кеш используем только если сеть недоступна (офлайн).
    ============================================================ */
 
-const CACHE_NAME = 'kbzy-cache-v21';
+const CACHE_NAME = 'kbzy-cache-v22';
 
 const CORE_ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
   './css/style.css',
+  './js/icons.js',
   './js/db.js',
   './js/api.js',
   './js/app.js',

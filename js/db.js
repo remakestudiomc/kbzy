@@ -1,7 +1,8 @@
 /* ============================================================
-   Модуль хранения данных
-   - localStorage:  настройки (КБЖУ, API-ключ OpenRouter)
-   - IndexedDB:     записи дневника с фото и записи веса
+   Хранилище
+   - localStorage: настройки (нормы, профиль, тема, ключ, модель)
+   - IndexedDB:    записи дневника, избранное, вес
+   Имена баз и версия НЕ меняются — данные пользователя остаются.
    ============================================================ */
 
 const DB_NAME = 'kbzy-diary';
@@ -21,7 +22,13 @@ function openDB() {
   if (dbPromise) return dbPromise;
 
   dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    let req;
+    try {
+      req = indexedDB.open(DB_NAME, DB_VERSION);
+    } catch (err) {
+      reject(err);
+      return;
+    }
 
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
@@ -42,11 +49,16 @@ function openDB() {
 
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
+    req.onblocked = () => reject(new Error('База занята другой вкладкой'));
   });
 
   return dbPromise;
 }
 
+/**
+ * Обёртка над транзакцией. Ничего не удаляет при ошибках —
+ * раньше любая ошибка приводила к deleteDatabase и потере данных.
+ */
 function tx(storeName, mode, fn) {
   return openDB().then((db) => {
     return new Promise((resolve, reject) => {
@@ -56,44 +68,20 @@ function tx(storeName, mode, fn) {
         t = db.transaction(storeName, mode);
         request = fn(t.objectStore(storeName));
       } catch (err) {
-        // Если store не найден — база повреждена, восстанавливаем
-        recoverDB().then(() => reject(err), () => reject(err));
+        reject(err);
         return;
       }
 
       let result;
-
-      // Если fn вернул IDBRequest (getAll, add, delete и т.д.) — читаем его result
       if (request && typeof request.addEventListener === 'function') {
         request.addEventListener('success', () => { result = request.result; });
-        request.addEventListener('error', () => {
-          // При ошибке запроса — восстанавливаем базу
-          recoverDB();
-          reject(request.error);
-        });
       }
 
       t.addEventListener('complete', () => resolve(result));
-      t.addEventListener('error', () => {
-        recoverDB();
-        reject(t.error);
-      });
-      t.addEventListener('abort', () => {
-        recoverDB();
-        reject(t.error);
-      });
+      t.addEventListener('error', () => reject(t.error));
+      t.addEventListener('abort', () => reject(t.error));
     });
   });
-}
-
-/* ---------- Автовосстановление повреждённой базы ---------- */
-
-async function recoverDB() {
-  // Сбрасываем кеш промиса и удаляем базу, чтобы пересоздать с нуля
-  dbPromise = null;
-  try {
-    indexedDB.deleteDatabase(DB_NAME);
-  } catch (e) { /* ignore */ }
 }
 
 /* ---------- Записи дневника ---------- */
@@ -110,15 +98,21 @@ async function DBDeleteEntry(id) {
   return tx(STORE_ENTRIES, 'readwrite', (store) => store.delete(id));
 }
 
+async function DBGetAllEntries() {
+  return (await tx(STORE_ENTRIES, 'readonly', (store) => store.getAll())) || [];
+}
+
 async function DBGetEntriesByDate(dateStr) {
-  const all = await tx(STORE_ENTRIES, 'readonly', (store) => store.getAll());
+  const all = await DBGetAllEntries();
   return all
     .filter((e) => e.date === dateStr)
     .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 }
 
-async function DBGetAllEntries() {
-  return tx(STORE_ENTRIES, 'readonly', (store) => store.getAll());
+/** Записи за диапазон дат включительно: 'YYYY-MM-DD' */
+async function DBGetEntriesRange(fromDate, toDate) {
+  const all = await DBGetAllEntries();
+  return all.filter((e) => e.date >= fromDate && e.date <= toDate);
 }
 
 async function DBClearEntries() {
@@ -131,34 +125,66 @@ async function DBAddFavorite(fav) {
   return tx(STORE_FAVORITES, 'readwrite', (store) => store.add(fav));
 }
 
+async function DBUpdateFavorite(fav) {
+  return tx(STORE_FAVORITES, 'readwrite', (store) => store.put(fav));
+}
+
 async function DBGetFavorites() {
-  return tx(STORE_FAVORITES, 'readonly', (store) => store.getAll());
+  return (await tx(STORE_FAVORITES, 'readonly', (store) => store.getAll())) || [];
 }
 
 async function DBDeleteFavorite(id) {
   return tx(STORE_FAVORITES, 'readwrite', (store) => store.delete(id));
 }
 
+/* ---------- Вес ---------- */
+
+async function DBAddWeight(weight) {
+  return tx(STORE_WEIGHTS, 'readwrite', (store) => store.add(weight));
+}
+
+async function DBGetWeights() {
+  return (await tx(STORE_WEIGHTS, 'readonly', (store) => store.getAll())) || [];
+}
+
+async function DBDeleteWeight(id) {
+  return tx(STORE_WEIGHTS, 'readwrite', (store) => store.delete(id));
+}
+
 /* ---------- Настройки ---------- */
 
+const DEFAULT_PROFILE = {
+  sex: 'm',
+  age: 25,
+  height: 180,
+  weight: 80,
+  activity: 1.55,
+  goal: 'maintain', // cut | maintain | bulk
+};
+
 const DEFAULT_SETTINGS = {
-  kcal: 2000,
-  protein: 100,
-  fats: 70,
-  carbs: 250,
-  // API-ключ OpenRouter. Хранится ТОЛЬКО в localStorage этого браузера,
-  // никогда не публикуется в коде сайта и недоступен другим посетителям.
+  kcal: 2400,
+  protein: 160,
+  fats: 75,
+  carbs: 280,
   openrouterKey: '',
+  model: 'google/gemini-2.5-flash',
+  theme: 'system', // system | light | dark
+  profile: { ...DEFAULT_PROFILE },
 };
 
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { ...DEFAULT_SETTINGS };
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULT_SETTINGS, ...parsed };
+    if (!raw) return { ...DEFAULT_SETTINGS, profile: { ...DEFAULT_PROFILE } };
+    const parsed = JSON.parse(raw) || {};
+    return {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      profile: { ...DEFAULT_PROFILE, ...(parsed.profile || {}) },
+    };
   } catch (e) {
-    return { ...DEFAULT_SETTINGS };
+    return { ...DEFAULT_SETTINGS, profile: { ...DEFAULT_PROFILE } };
   }
 }
 
@@ -166,30 +192,67 @@ function saveSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
-function clearAllData() {
+async function clearAllData() {
   localStorage.removeItem(SETTINGS_KEY);
-  return Promise.all([
+  await Promise.all([
     DBClearEntries(),
     tx(STORE_FAVORITES, 'readwrite', (store) => store.clear()),
     tx(STORE_WEIGHTS, 'readwrite', (store) => store.clear()),
   ]);
 }
 
-/* ---------- Записи веса ---------- */
+/* ---------- Резервная копия ---------- */
 
-async function DBAddWeight(weight) {
-  return tx(STORE_WEIGHTS, 'readwrite', (store) => store.add(weight));
+async function DBExportAll() {
+  const [entries, favorites, weights] = await Promise.all([
+    DBGetAllEntries(),
+    DBGetFavorites(),
+    DBGetWeights(),
+  ]);
+  return {
+    app: 'kbzy',
+    version: DB_VERSION,
+    exportedAt: new Date().toISOString(),
+    settings: loadSettings(),
+    entries,
+    favorites,
+    weights,
+  };
 }
 
-async function DBGetWeights() {
-  return tx(STORE_WEIGHTS, 'readonly', (store) => store.getAll());
+async function DBImportAll(data) {
+  if (!data || typeof data !== 'object') throw new Error('Файл не похож на резервную копию');
+
+  const entries = Array.isArray(data.entries) ? data.entries : [];
+  const favorites = Array.isArray(data.favorites) ? data.favorites : [];
+  const weights = Array.isArray(data.weights) ? data.weights : [];
+
+  await clearAllData();
+
+  for (const e of entries) {
+    const copy = { ...e };
+    delete copy.id;
+    await DBAddEntry(copy);
+  }
+  for (const f of favorites) {
+    const copy = { ...f };
+    delete copy.id;
+    await DBAddFavorite(copy);
+  }
+  for (const w of weights) {
+    const copy = { ...w };
+    delete copy.id;
+    await DBAddWeight(copy);
+  }
+
+  if (data.settings && typeof data.settings === 'object') {
+    saveSettings({ ...DEFAULT_SETTINGS, ...data.settings });
+  }
+
+  return { entries: entries.length, favorites: favorites.length, weights: weights.length };
 }
 
-async function DBDeleteWeight(id) {
-  return tx(STORE_WEIGHTS, 'readwrite', (store) => store.delete(id));
-}
-
-/* ---------- Утилиты ---------- */
+/* ---------- Даты и числа ---------- */
 
 function formatDate(date) {
   const y = date.getFullYear();
@@ -202,29 +265,39 @@ function todayStr() {
   return formatDate(new Date());
 }
 
+const RU_MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+const RU_MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+const RU_DAYS = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
+const RU_DAYS_SHORT = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+
+function parseDate(dateStr) {
+  const [y, m, d] = String(dateStr).split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function formatDateRu(dateStr) {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
-  const months = [
-    'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
-  ];
-  const days = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
-  return `${d} ${months[m - 1]}, ${days[date.getDay()]}`;
+  const date = parseDate(dateStr);
+  return `${date.getDate()} ${RU_MONTHS[date.getMonth()]}, ${RU_DAYS[date.getDay()]}`;
+}
+
+function formatDateShort(dateStr) {
+  const date = parseDate(dateStr);
+  return `${date.getDate()} ${RU_MONTHS_SHORT[date.getMonth()]}`;
 }
 
 function addDays(dateStr, delta) {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const date = new Date(y, m - 1, d + delta);
+  const date = parseDate(dateStr);
+  date.setDate(date.getDate() + delta);
   return formatDate(date);
+}
+
+function daysBetween(fromStr, toStr) {
+  const a = parseDate(fromStr).getTime();
+  const b = parseDate(toStr).getTime();
+  return Math.round((b - a) / 86400000);
 }
 
 function formatTime(ts) {
   const d = new Date(ts);
   return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-}
-
-function formatDateTime(ts) {
-  if (!ts) return '';
-  return `${formatDateRu(formatDate(new Date(ts)))}, ${formatTime(ts)}`;
 }

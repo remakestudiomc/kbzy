@@ -2,8 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-  <meta name="theme-color" content="#d4a017">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="Дневник питания: считайте КБЖУ по фото с помощью нейросети">
   <title>КБЖУ Дневник</title>
   <link rel="manifest" href="manifest.webmanifest">
@@ -14,312 +13,422 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="КБЖУ">
+  <meta name="theme-color" content="#f5f6f8">
   <link rel="stylesheet" href="css/style.css">
+  <script>
+    /* Тема до первой отрисовки — чтобы не было вспышки светлого экрана */
+    (function () {
+      try {
+        var saved = JSON.parse(localStorage.getItem('kbzy-settings') || '{}');
+        var mode = saved.theme || 'system';
+        var dark = mode === 'dark' ||
+          (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', dark ? '#0a0b0d' : '#f5f6f8');
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
 </head>
 <body>
-<div id="app">
 
-  <!-- ================= Экран: Дневник ================= -->
+<div class="app">
+
+  <!-- ==================== ДНЕВНИК ==================== -->
   <main class="screen active" id="screen-diary">
-    <header class="app-header">
-      <div class="header-top">
-        <div class="brand">
-          <span class="brand-logo"><img src="logo.png" alt="КБЖУ Дневник"></span>
-          <div>
-            <h1 class="brand-name">КБЖУ Дневник</h1>
-            <p class="brand-tag">с умным подсчётом</p>
+    <header class="topbar">
+      <button class="icon-btn" data-action="day-prev" aria-label="Предыдущий день">
+        <i data-icon="chevron-left" data-size="22"></i>
+      </button>
+      <button class="date-pill" id="btn-date" data-action="pick-date">
+        <span class="date-title" id="date-title">Сегодня</span>
+        <span class="date-sub" id="date-sub">—</span>
+      </button>
+      <button class="icon-btn" id="btn-next-day" data-action="day-next" aria-label="Следующий день">
+        <i data-icon="chevron-right" data-size="22"></i>
+      </button>
+      <input type="date" id="date-picker" class="visually-hidden" tabindex="-1" aria-hidden="true">
+    </header>
+
+    <section class="card hero">
+      <div class="hero-head">
+        <div>
+          <div class="hero-label">Съедено</div>
+          <div class="hero-num">
+            <span id="kcal-now">0</span><span class="hero-unit">ккал</span>
           </div>
         </div>
-        <div class="header-actions">
-          <button class="icon-btn soft settings-btn" data-screen="screen-settings" aria-label="Настройки">⚙️</button>
-        </div>
-      </div>
-
-      <div class="date-nav">
-        <button class="icon-btn nav-arrow" id="btn-prev-day" aria-label="Предыдущий день">‹</button>
-        <button class="date-btn" id="btn-date" aria-label="Выбрать дату">
-          <span class="date-title" id="date-title">Сегодня</span>
-          <span class="date-sub" id="date-sub"></span>
+        <button class="goal-chip" id="btn-edit-goal" data-action="goal" aria-label="Изменить дневную норму">
+          <i data-icon="target" data-size="14"></i>
+          <span id="kcal-goal">2000</span>
         </button>
-        <button class="icon-btn nav-arrow" id="btn-next-day" aria-label="Следующий день">›</button>
       </div>
-      <input type="date" id="date-picker" class="visually-hidden" tabindex="-1">
-    </header>
 
-    <div class="screen-body">
+      <div class="progress"><div class="progress-fill" id="kcal-bar"></div></div>
+      <div class="hero-foot">
+        <span id="kcal-remain">осталось 2000 ккал</span>
+        <span id="kcal-pct">0%</span>
+      </div>
 
-      <!-- Блок калорий -->
-      <section class="hero-card card">
-        <div class="hero-ring">
-          <svg viewBox="0 0 120 120" class="ring-svg">
-            <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
-            <circle class="ring-fill" id="kcal-ring" cx="60" cy="60" r="52"></circle>
-          </svg>
-          <div class="ring-center">
-            <span class="ring-value" id="kcal-now">0</span>
-            <span class="ring-label">ккал</span>
-          </div>
+      <div class="macro-grid">
+        <div class="macro">
+          <div class="macro-head"><span class="dot dot-protein"></span>Белки</div>
+          <div class="macro-num"><b id="protein-now">0</b><span class="macro-goal">/ <span id="protein-goal">100</span> г</span></div>
+          <div class="progress thin"><div class="progress-fill protein" id="protein-bar"></div></div>
         </div>
-        <div class="hero-info">
-          <div class="hero-goal">
-            <span class="hero-goal-label">Цель</span>
-            <button class="hero-goal-value" id="btn-edit-goal" aria-label="Изменить дневную норму калорий"><span id="kcal-goal">2000</span> ккал</button>
-          </div>
-          <div class="hero-remain" id="kcal-remain">осталось 2000</div>
-          <div class="hero-progress">
-            <div class="bar"><div class="bar-fill kcal" id="kcal-bar"></div></div>
-          </div>
+        <div class="macro">
+          <div class="macro-head"><span class="dot dot-fats"></span>Жиры</div>
+          <div class="macro-num"><b id="fats-now">0</b><span class="macro-goal">/ <span id="fats-goal">70</span> г</span></div>
+          <div class="progress thin"><div class="progress-fill fats" id="fats-bar"></div></div>
         </div>
-      </section>
+        <div class="macro">
+          <div class="macro-head"><span class="dot dot-carbs"></span>Углеводы</div>
+          <div class="macro-num"><b id="carbs-now">0</b><span class="macro-goal">/ <span id="carbs-goal">250</span> г</span></div>
+          <div class="progress thin"><div class="progress-fill carbs" id="carbs-bar"></div></div>
+        </div>
+      </div>
+    </section>
 
-      <!-- Макронутриенты -->
-      <section class="macro-grid">
-        <div class="card macro-card protein-card">
-          <div class="macro-head">
-            <span class="macro-icon">🥩</span>
-            <span>Белки</span>
-          </div>
-          <div class="macro-nums"><b id="protein-now">0</b><span class="macro-slash">/<span id="protein-goal">100</span> г</span></div>
-          <div class="bar thin"><div class="bar-fill protein" id="protein-bar"></div></div>
-        </div>
-        <div class="card macro-card fats-card">
-          <div class="macro-head">
-            <span class="macro-icon">🥑</span>
-            <span>Жиры</span>
-          </div>
-          <div class="macro-nums"><b id="fats-now">0</b><span class="macro-slash">/<span id="fats-goal">70</span> г</span></div>
-          <div class="bar thin"><div class="bar-fill fats" id="fats-bar"></div></div>
-        </div>
-        <div class="card macro-card carbs-card">
-          <div class="macro-head">
-            <span class="macro-icon">🍞</span>
-            <span>Углеводы</span>
-          </div>
-          <div class="macro-nums"><b id="carbs-now">0</b><span class="macro-slash">/<span id="carbs-goal">250</span> г</span></div>
-          <div class="bar thin"><div class="bar-fill carbs" id="carbs-bar"></div></div>
-        </div>
-      </section>
+    <section class="quick-section" id="quick-section">
+      <div class="section-head">
+        <h2>Быстрое добавление</h2>
+        <button class="text-btn" data-action="fav-manage">Управлять</button>
+      </div>
+      <div class="chips" id="quick-list"></div>
+    </section>
 
-      <!-- Избранное -->
-      <section class="favorites-section" id="favorites-section">
-        <div class="section-head">
-          <h2>⭐ Избранное</h2>
-          <span class="section-sub" id="fav-count"></span>
-        </div>
-        <div class="favorites-scroll" id="favorites-list"></div>
-      </section>
+    <section class="meals" id="meals-list"></section>
 
-      <!-- Записи -->
-      <section class="entries-section">
-        <div class="section-head">
-          <h2>📒 Приёмы пищи</h2>
-          <button class="btn-add-simple" id="btn-add-simple">＋ Добавить</button>
-        </div>
-        <div class="entries" id="entries-list"></div>
-      </section>
-
-    </div>
+    <button class="add-btn" data-action="add">
+      <i data-icon="plus" data-size="18"></i>
+      <span>Добавить приём пищи</span>
+    </button>
   </main>
 
-  <!-- ================= Экран: Настройки ================= -->
+  <!-- ==================== СТАТИСТИКА ==================== -->
+  <main class="screen" id="screen-stats">
+    <header class="page-head">
+      <h1>Статистика</h1>
+      <div class="segmented" id="stats-range">
+        <button class="seg active" data-action="stats-range" data-range="7">7 дней</button>
+        <button class="seg" data-action="stats-range" data-range="30">30 дней</button>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Калории</h2>
+        <span class="card-sub" id="stats-kcal-sub">—</span>
+      </div>
+      <div class="chart" id="chart-kcal"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Средние за период</h2></div>
+      <div class="stat-grid" id="stats-avg"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Вес</h2>
+        <span class="card-sub" id="stats-weight-sub">—</span>
+      </div>
+      <div class="spark" id="stats-spark"></div>
+    </section>
+  </main>
+
+  <!-- ==================== НАСТРОЙКИ ==================== -->
   <main class="screen" id="screen-settings">
-    <header class="app-header">
-      <div class="settings-title">
-        <button class="icon-btn soft" data-screen="screen-diary" aria-label="Назад">‹</button>
-        <h1 class="page-title">Настройки</h1>
+    <header class="page-head"><h1>Настройки</h1></header>
+
+    <section class="card">
+      <div class="card-head"><h2>Профиль</h2></div>
+      <p class="hint">Нужен, чтобы нейросеть точнее оценивала порции, а нормы считались под вас.</p>
+      <div class="segmented" id="seg-sex">
+        <button class="seg" data-action="profile-sex" data-val="m">Мужчина</button>
+        <button class="seg" data-action="profile-sex" data-val="f">Женщина</button>
       </div>
-    </header>
-
-    <div class="screen-body">
-      <section class="card settings-section">
-        <h2>🎯 Дневная норма КБЖУ</h2>
-        <div class="field">
-          <label for="set-cal">Калории, ккал</label>
-          <input type="number" id="set-cal" min="0" step="1" inputmode="numeric" autocomplete="off">
-        </div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="set-protein">Белки, г</label>
-            <input type="number" id="set-protein" min="0" step="1" inputmode="numeric" autocomplete="off">
-          </div>
-          <div class="field">
-            <label for="set-fats">Жиры, г</label>
-            <input type="number" id="set-fats" min="0" step="1" inputmode="numeric" autocomplete="off">
-          </div>
-        </div>
-        <div class="field">
-          <label for="set-carbs">Углеводы, г</label>
-          <input type="number" id="set-carbs" min="0" step="1" inputmode="numeric" autocomplete="off">
-        </div>
-      </section>
-
-      <section class="card settings-section weight-section">
-        <h2>⚖️ Мой вес</h2>
-        <div class="weight-summary">
-          <div class="weight-current">
-            <span class="weight-value" id="weight-current">—</span>
-            <span class="weight-unit">кг</span>
-          </div>
-          <div class="weight-change" id="weight-change"></div>
-        </div>
-        <div class="weight-input-row">
-          <input type="number" id="weight-input" placeholder="Ваш вес, кг" inputmode="decimal" step="0.1" min="20" max="400" autocomplete="off">
-          <button class="primary" id="btn-add-weight">Записать</button>
-        </div>
-        <div class="weight-list" id="weight-list"></div>
-      </section>
-
-      <section class="card settings-section">
-        <h2>🤖 Нейросеть</h2>
-        <p class="hint-center">Для распознавания блюд приложение обращается к <b>OpenRouter</b> (модель Google Gemini 2.5 Flash). Вставьте ваш личный API-ключ — он хранится только в этом браузере и отправляется напрямую в OpenRouter.</p>
-        <div class="field" style="margin-top: 12px;">
-          <label for="set-api-key">API-ключ OpenRouter</label>
-          <div class="key-input-row">
-            <input type="password" id="set-api-key" placeholder="sk-or-v1-…" autocomplete="off" spellcheck="false">
-            <button type="button" class="icon-btn soft key-toggle" id="btn-toggle-key" aria-label="Показать/скрыть ключ">👁</button>
-          </div>
-          <div class="key-check-row">
-            <button type="button" class="ghost" id="btn-check-key">Проверить ключ</button>
-            <span class="key-check-status" id="key-check-status"></span>
-          </div>
-          <p class="hint-center small">Ключ создаётся бесплатно на <b>openrouter.ai/keys</b>. Без ключа распознавание фото не работает, но вести дневник можно.</p>
-        </div>
-      </section>
-
-      <div class="settings-actions">
-        <button class="primary big full" id="btn-save-settings">Сохранить</button>
-        <button class="danger full" id="btn-clear-data">Стереть все данные</button>
+      <div class="grid-2">
+        <label class="field"><span>Возраст</span>
+          <input type="number" id="set-age" min="10" max="100" inputmode="numeric" placeholder="25">
+        </label>
+        <label class="field"><span>Рост, см</span>
+          <input type="number" id="set-height" min="100" max="230" inputmode="numeric" placeholder="180">
+        </label>
       </div>
-    </div>
+      <div class="grid-2">
+        <label class="field"><span>Вес, кг</span>
+          <input type="number" id="set-weight" min="20" max="300" step="0.1" inputmode="decimal" placeholder="80">
+        </label>
+        <label class="field"><span>Активность</span>
+          <select id="set-activity">
+            <option value="1.2">Сидячая</option>
+            <option value="1.375">Легкая</option>
+            <option value="1.55">Средняя</option>
+            <option value="1.725">Высокая</option>
+            <option value="1.9">Очень высокая</option>
+          </select>
+        </label>
+      </div>
+      <div class="segmented" id="seg-goal">
+        <button class="seg" data-action="profile-goal" data-val="cut">Похудение</button>
+        <button class="seg" data-action="profile-goal" data-val="maintain">Поддержка</button>
+        <button class="seg" data-action="profile-goal" data-val="bulk">Набор</button>
+      </div>
+      <button class="btn secondary block" data-action="calc-norms">
+        <i data-icon="sparkles" data-size="16"></i><span>Рассчитать норму под меня</span>
+      </button>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Дневная норма</h2></div>
+      <div class="field">
+        <span>Калории, ккал</span>
+        <input type="number" id="set-cal" min="0" step="10" inputmode="numeric">
+      </div>
+      <div class="grid-3">
+        <label class="field"><span>Белки</span>
+          <input type="number" id="set-protein" min="0" step="1" inputmode="numeric">
+        </label>
+        <label class="field"><span>Жиры</span>
+          <input type="number" id="set-fats" min="0" step="1" inputmode="numeric">
+        </label>
+        <label class="field"><span>Углеводы</span>
+          <input type="number" id="set-carbs" min="0" step="1" inputmode="numeric">
+        </label>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Оформление</h2></div>
+      <div class="segmented" id="seg-theme">
+        <button class="seg" data-action="theme" data-val="system">Системная</button>
+        <button class="seg" data-action="theme" data-val="light">Светлая</button>
+        <button class="seg" data-action="theme" data-val="dark">Тёмная</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Нейросеть</h2></div>
+      <p class="hint">Запросы идут напрямую в OpenRouter с вашим ключом. Ключ хранится только в этом браузере.</p>
+      <div class="field">
+        <span>API-ключ OpenRouter</span>
+        <div class="input-row">
+          <input type="password" id="set-api-key" placeholder="sk-or-v1-…" autocomplete="off" spellcheck="false">
+          <button class="icon-btn soft" id="btn-toggle-key" data-action="toggle-key" aria-label="Показать ключ">
+            <i data-icon="eye" data-size="18"></i>
+          </button>
+        </div>
+      </div>
+      <div class="inline-row">
+        <button class="btn secondary" id="btn-check-key" data-action="check-key">Проверить ключ</button>
+        <span class="status-text" id="key-status"></span>
+      </div>
+      <label class="field"><span>Модель</span>
+        <input type="text" id="set-model" placeholder="google/gemini-2.5-flash" autocomplete="off" spellcheck="false">
+      </label>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Данные</h2></div>
+      <div class="stack">
+        <button class="btn secondary block" data-action="export">
+          <i data-icon="download" data-size="16"></i><span>Скачать резервную копию</span>
+        </button>
+        <button class="btn secondary block" data-action="import">
+          <i data-icon="upload" data-size="16"></i><span>Загрузить из файла</span>
+        </button>
+        <button class="btn danger block" data-action="clear-data">
+          <i data-icon="trash" data-size="16"></i><span>Стереть все данные</span>
+        </button>
+      </div>
+      <input type="file" id="import-file" accept="application/json,.json" class="visually-hidden">
+    </section>
+
+    <button class="btn primary block save-btn" id="btn-save-settings" data-action="save-settings">
+      <span>Сохранить настройки</span>
+    </button>
+
+    <p class="about">КБЖУ Дневник · версия 2.0 · данные хранятся на устройстве</p>
   </main>
 
-  <!-- ================= Нижняя навигация ================= -->
-  <nav class="bottom-nav">
-    <button class="nav-btn active" data-screen="screen-diary">
-      <span class="nav-ico">📒</span><span>Дневник</span>
+  <!-- ==================== НИЖНЯЯ НАВИГАЦИЯ ==================== -->
+  <nav class="tabbar">
+    <button class="tab active" data-action="nav" data-screen="screen-diary">
+      <i data-icon="book" data-size="21"></i><span>Дневник</span>
     </button>
-    <button class="nav-fab" id="nav-add" aria-label="Добавить приём пищи">
-      <span class="fab-plus">＋</span>
+    <button class="tab" data-action="nav" data-screen="screen-stats">
+      <i data-icon="chart" data-size="21"></i><span>Статистика</span>
     </button>
-    <button class="nav-btn" data-screen="screen-settings">
-      <span class="nav-ico">⚙️</span><span>Настройки</span>
+    <button class="tab" data-action="nav" data-screen="screen-settings">
+      <i data-icon="settings" data-size="21"></i><span>Настройки</span>
+    </button>
+    <button class="tab-add" data-action="add" aria-label="Добавить приём пищи">
+      <i data-icon="plus" data-size="24"></i>
     </button>
   </nav>
+</div>
 
-  <!-- ================= Оверлей: фото / описание / результат ================= -->
-  <div class="overlay hidden" id="overlay-add">
-    <div class="overlay-inner">
+<!-- ==================== ЭКРАН ДОБАВЛЕНИЯ / РЕДАКТИРОВАНИЯ ==================== -->
+<div class="overlay" id="overlay-add" hidden>
+  <div class="overlay-inner">
 
-      <!-- Шаг 1: ввод -->
-      <section class="flow visible" id="flow-capture">
-        <header class="flow-head">
-          <h2>Новый приём пищи</h2>
-          <button class="icon-btn" id="btn-close-flow" aria-label="Закрыть">✕</button>
-        </header>
+    <!-- Шаг 1: фото и описание -->
+    <section class="pane active" id="pane-capture">
+      <header class="pane-head">
+        <button class="icon-btn" data-action="close-flow" aria-label="Закрыть"><i data-icon="x" data-size="22"></i></button>
+        <h2 id="capture-title">Новый приём пищи</h2>
+        <span class="pane-head-spacer"></span>
+      </header>
 
-        <div class="flow-scroll">
-          <input type="file" accept="image/*" id="file-input" class="hidden">
-          <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden">
+      <div class="pane-body">
+        <input type="file" accept="image/*" id="file-input" class="visually-hidden">
+        <input type="file" accept="image/*" capture="environment" id="camera-input" class="visually-hidden">
 
-          <div class="photo-area" id="photo-area">
-            <img id="photo-preview" class="hidden" alt="Фото блюда">
-            <button class="photo-retake hidden" id="btn-retake-photo">↺ Переснять</button>
-            <div class="photo-empty" id="photo-empty">
-              <div class="photo-ico">🍽️</div>
-              <p class="photo-hint">Сфотографируйте блюдо целиком — так расчёт будет точнее</p>
-              <button class="primary big" id="btn-take-photo">📷 Сделать фото</button>
-              <button class="ghost big" id="btn-choose-photo">🖼 Из галереи</button>
+        <div class="photo-area" id="photo-area">
+          <img id="photo-preview" alt="Фото блюда" hidden>
+          <button class="photo-retake" id="btn-retake-photo" data-action="retake" hidden>
+            <i data-icon="refresh" data-size="15"></i><span>Другое фото</span>
+          </button>
+          <div class="photo-empty" id="photo-empty">
+            <div class="photo-ico"><i data-icon="camera" data-size="30"></i></div>
+            <p class="photo-hint">Сфотографируйте блюдо целиком — так точнее</p>
+            <div class="photo-actions">
+              <button class="btn primary" data-action="take-photo">
+                <i data-icon="camera" data-size="18"></i><span>Фото</span>
+              </button>
+              <button class="btn secondary" data-action="choose-photo">
+                <i data-icon="image" data-size="18"></i><span>Галерея</span>
+              </button>
             </div>
-          </div>
-
-          <div class="desc-card">
-            <div class="desc-head">
-              <span class="desc-label">✍️ Описание блюда <span class="desc-optional">(необязательно)</span></span>
-              <span class="desc-count" id="desc-count">0 / 300</span>
-            </div>
-            <textarea id="add-description" rows="3" maxlength="300" placeholder="Например: «овсянка на молоке с бананом и орехами»"></textarea>
-            <p class="desc-hint">Может заменить фото — просто опишите блюдо словами</p>
-          </div>
-
-          <button class="primary big full" id="btn-analyze" disabled>✨ Рассчитать КБЖУ</button>
-          <p class="hint-center" id="analyze-hint">Добавьте фото или опишите блюдо — нейросеть рассчитает КБЖУ</p>
-        </div>
-      </section>
-
-      <!-- Шаг 2: загрузка -->
-      <section class="flow" id="flow-loading">
-        <div class="loading-wrap">
-          <div class="spinner"></div>
-          <p class="loading-text">Нейросеть анализирует…</p>
-          <p class="hint-center">Обычно 5–15 секунд</p>
-        </div>
-      </section>
-
-      <!-- Шаг 3: результат -->
-      <section class="flow" id="flow-result">
-        <header class="flow-head">
-          <h2 id="result-title">Результат</h2>
-          <button class="icon-btn" id="btn-close-result" aria-label="Закрыть">✕</button>
-        </header>
-
-        <div class="result-scroll">
-          <img class="result-photo hidden" id="result-photo" alt="Фото блюда">
-          <p class="hint-center accent" id="result-date-note"></p>
-
-          <div class="field">
-            <label for="result-name">Название блюда</label>
-            <input type="text" id="result-name" placeholder="Например: Овсянка с бананом" autocomplete="off">
-          </div>
-
-          <div class="grid-2">
-            <div class="field">
-              <label for="result-weight">Вес порции, г</label>
-              <input type="number" id="result-weight" min="0" step="1" inputmode="decimal" autocomplete="off">
-            </div>
-            <div class="field">
-              <label for="result-cal">Калории, ккал</label>
-              <input type="number" id="result-cal" min="0" step="1" inputmode="decimal" autocomplete="off">
-            </div>
-          </div>
-
-          <div class="grid-3">
-            <div class="field">
-              <label for="result-protein">Белки, г</label>
-              <input type="number" id="result-protein" min="0" step="0.1" inputmode="decimal" autocomplete="off">
-            </div>
-            <div class="field">
-              <label for="result-fats">Жиры, г</label>
-              <input type="number" id="result-fats" min="0" step="0.1" inputmode="decimal" autocomplete="off">
-            </div>
-            <div class="field">
-              <label for="result-carbs">Углеводы, г</label>
-              <input type="number" id="result-carbs" min="0" step="0.1" inputmode="decimal" autocomplete="off">
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="result-desc">Описание</label>
-            <textarea id="result-desc" rows="2" maxlength="300" placeholder="Дополнительная информация о приёме пищи"></textarea>
-          </div>
-
-          <button class="primary big full" id="btn-save-result">✓ Сохранить в дневник</button>
-          <button class="fav-btn full" id="btn-save-favorite">⭐ Сохранить в избранное</button>
-          <div class="result-row">
-            <button class="ghost" id="btn-back-capture">↺ Переснять</button>
-            <button class="danger ghost" id="btn-delete-result">🗑 Удалить</button>
           </div>
         </div>
-      </section>
 
-    </div>
-  </div>
+        <label class="field">
+          <span>Описание <em>необязательно</em></span>
+          <textarea id="add-description" rows="3" maxlength="300"
+            placeholder="Например: овсянка на молоке с бананом и орехами, 300 г"></textarea>
+        </label>
+        <div class="desc-foot"><span>Можно без фото — просто опишите блюдо</span><span id="desc-count">0 / 300</span></div>
 
-  <div class="toast" id="toast">
-    <span class="toast-text" id="toast-text"></span>
-    <button class="toast-action hidden" id="toast-action" type="button">Отменить</button>
+        <div class="field">
+          <span>Приём пищи</span>
+          <div class="chips chips-tight" id="capture-meals"></div>
+        </div>
+      </div>
+
+      <footer class="pane-foot">
+        <button class="btn primary block big" id="btn-analyze" data-action="analyze" disabled>
+          <i data-icon="sparkles" data-size="18"></i><span>Рассчитать КБЖУ</span>
+        </button>
+      </footer>
+    </section>
+
+    <!-- Шаг 2: загрузка -->
+    <section class="pane" id="pane-loading">
+      <div class="loading">
+        <div class="spinner"></div>
+        <p class="loading-title">Считаю КБЖУ</p>
+        <p class="loading-hint" id="loading-hint">Разбираю блюдо на компоненты…</p>
+      </div>
+    </section>
+
+    <!-- Шаг 3: результат -->
+    <section class="pane" id="pane-result">
+      <header class="pane-head">
+        <button class="icon-btn" data-action="close-flow" aria-label="Закрыть"><i data-icon="x" data-size="22"></i></button>
+        <h2 id="result-title">Результат</h2>
+        <button class="icon-btn" data-action="result-menu" aria-label="Ещё"><i data-icon="more-horizontal" data-size="22"></i></button>
+      </header>
+
+      <div class="pane-body">
+        <div class="result-top">
+          <img class="result-photo" id="result-photo" alt="Фото блюда" hidden>
+          <div class="result-top-info">
+            <span class="badge" id="result-confidence" hidden></span>
+            <span class="result-date" id="result-date-note"></span>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>Название</span>
+          <input type="text" id="res-name" placeholder="Например: Овсянка с бананом" autocomplete="off" maxlength="120">
+        </label>
+
+        <div class="field">
+          <span>Приём пищи</span>
+          <div class="chips chips-tight" id="res-meals"></div>
+        </div>
+
+        <div class="grid-2">
+          <label class="field"><span>Вес порции, г</span>
+            <input type="number" id="res-weight" min="0" step="1" inputmode="decimal" placeholder="250">
+          </label>
+          <label class="field"><span>Калории</span>
+            <input type="number" id="res-kcal" min="0" step="1" inputmode="decimal" placeholder="350">
+          </label>
+        </div>
+
+        <div class="grid-3">
+          <label class="field"><span>Белки, г</span>
+            <input type="number" id="res-protein" min="0" step="0.1" inputmode="decimal" placeholder="15">
+          </label>
+          <label class="field"><span>Жиры, г</span>
+            <input type="number" id="res-fats" min="0" step="0.1" inputmode="decimal" placeholder="12">
+          </label>
+          <label class="field"><span>Углеводы, г</span>
+            <input type="number" id="res-carbs" min="0" step="0.1" inputmode="decimal" placeholder="40">
+          </label>
+        </div>
+
+        <p class="sync-hint" id="res-sync-hint">Меняете вес — КБЖУ пересчитывается. Меняете БЖУ — калории пересчитываются сами.</p>
+
+        <div class="components" id="res-components"></div>
+
+        <div class="refine">
+          <label class="field">
+            <span>Уточнить расчёт</span>
+            <input type="text" id="res-refine" maxlength="200" autocomplete="off"
+              placeholder="Например: это было на гриле, масла почти не было">
+          </label>
+          <button class="btn secondary" data-action="refine">
+            <i data-icon="refresh" data-size="16"></i><span>Пересчитать</span>
+          </button>
+        </div>
+
+        <label class="field">
+          <span>Заметка</span>
+          <textarea id="res-desc" rows="2" maxlength="300" placeholder="Что угодно: место, самочувствие, добавки"></textarea>
+        </label>
+      </div>
+
+      <footer class="pane-foot">
+        <button class="btn primary block big" data-action="save-result">
+          <i data-icon="check" data-size="18"></i><span id="save-result-label">Сохранить в дневник</span>
+        </button>
+        <button class="btn ghost block" id="btn-fav-toggle" data-action="result-favorite">
+          <i data-icon="star" data-size="16"></i><span>В избранное</span>
+        </button>
+      </footer>
+    </section>
+
   </div>
 </div>
 
+<!-- ==================== НИЖНИЙ ЛИСТ ==================== -->
+<div class="sheet-backdrop" id="sheet-backdrop" hidden>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true">
+    <div class="sheet-grab"></div>
+    <div class="sheet-body" id="sheet-body"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span class="toast-text" id="toast-text"></span>
+  <button class="toast-action" id="toast-action" type="button" hidden>Отменить</button>
+</div>
+
+<script src="js/icons.js"></script>
 <script src="js/db.js"></script>
 <script src="js/api.js"></script>
 <script src="js/app.js"></script>
