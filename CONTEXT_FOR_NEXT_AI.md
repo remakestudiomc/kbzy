@@ -2,7 +2,7 @@
 
 **Репозиторий:** https://github.com/remakestudiomc/kbzy  
 **GitHub Pages:** https://remakestudiomc.github.io/kbzy/  
-**Последний коммит:** `51837c5` — Fix OpenRouter requests: X-Title header must be ASCII-only  
+**Последний коммит:** `f7e5321` — Fix date picker and over-limit ring; add swipe, undo delete, polish cards  
 **Ветка:** master  
 **Язык:** русский (все сообщения пользователю — на русском)
 
@@ -19,6 +19,7 @@ API-ключ OpenRouter **только в localStorage** пользовател�
 
 | Коммит | Что |
 |---|---|
+| `f7e5321` | Календарь (`#date-picker`) был `display:none` — `showPicker()` требует отрисованный элемент, кнопка даты не работала. Теперь класс `.visually-hidden`. Кольцо калорий краснеет при превышении (раньше сравнивался уже обрезанный процент). Кнопка «Цель» открывает настройки нормы. Свайп/стрелки — переключение дней, вперёд дальше сегодня нельзя. Удаление записи отменяется кнопкой в тосте (confirm убран). |
 | `51837c5` | **Исправлена главная ошибка:** `X-Title: 'КБЖУ Дневник'` → `'KBJU Dnevnik'` (кириллица в HTTP-заголовке вызывала `TypeError: String contains non ISO-8859-1 code point` в браузере, запрос не уходил из браузера). |
 | `71ac11a` | Страница диагностики `diagnostic.html` (4 шага проверки соединения/ключа/POST-запросов). Улучшены сообщения об ошибках. |
 | `db2e20b` | `.env` добавлен в `.gitignore` и закоммичен. |
