@@ -14,25 +14,6 @@ const fmt1 = (n) => {
   return Number.isInteger(v) ? String(v) : v.toFixed(1).replace('.', ',');
 };
 
-/* ---------- Приёмы пищи ---------- */
-
-const MEALS = [
-  { id: 'breakfast', label: 'Завтрак', icon: 'coffee' },
-  { id: 'lunch', label: 'Обед', icon: 'bowl' },
-  { id: 'dinner', label: 'Ужин', icon: 'utensils' },
-  { id: 'snack', label: 'Перекус', icon: 'flame' },
-];
-const MEAL_IDS = MEALS.map((m) => m.id);
-const mealLabel = (id) => (MEALS.find((m) => m.id === id) || MEALS[0]).label;
-
-function defaultMeal() {
-  const h = new Date().getHours();
-  if (h >= 5 && h < 11) return 'breakfast';
-  if (h >= 11 && h < 16) return 'lunch';
-  if (h >= 16 && h < 22) return 'dinner';
-  return 'snack';
-}
-
 /* ---------- Состояние ---------- */
 
 const state = {
@@ -43,7 +24,6 @@ const state = {
   favorites: [],
   weights: [],
   statsRange: 7,
-  meal: defaultMeal(),
   editingId: null,
   draft: null,
   per100: null,
@@ -84,14 +64,14 @@ const els = {
   carbsBar: $('carbs-bar'),
 
   quickList: $('quick-list'),
-  mealsList: $('meals-list'),
+  entriesList: $('entries-list'),
+  entriesCount: $('entries-count'),
 
   overlay: $('overlay-add'),
   paneCapture: $('pane-capture'),
   paneLoading: $('pane-loading'),
   paneResult: $('pane-result'),
   captureTitle: $('capture-title'),
-  captureMeals: $('capture-meals'),
   photoArea: $('photo-area'),
   photoPreview: $('photo-preview'),
   photoEmpty: $('photo-empty'),
@@ -108,7 +88,6 @@ const els = {
   resultConfidence: $('result-confidence'),
   resultDateNote: $('result-date-note'),
   resName: $('res-name'),
-  resMeals: $('res-meals'),
   resWeight: $('res-weight'),
   resKcal: $('res-kcal'),
   resProtein: $('res-protein'),
@@ -128,16 +107,16 @@ const els = {
   toastAction: $('toast-action'),
 
   // настройки
-  setAge: $('set-age'),
-  setHeight: $('set-height'),
-  setWeight: $('set-weight'),
-  setActivity: $('set-activity'),
   setCal: $('set-cal'),
   setProtein: $('set-protein'),
   setFats: $('set-fats'),
   setCarbs: $('set-carbs'),
   setApiKey: $('set-api-key'),
   setModel: $('set-model'),
+  modelCustomField: $('model-custom-field'),
+  setModelCustom: $('set-model-custom'),
+  weightInput: $('weight-input'),
+  weightList: $('weight-list'),
   keyStatus: $('key-status'),
   importFile: $('import-file'),
 };
@@ -153,7 +132,6 @@ async function init() {
   bindEvents();
   applyTheme(state.settings.theme);
   fillSettingsForm();
-  renderMealChips(els.captureMeals, state.meal);
 
   await Promise.all([loadFavorites(), loadWeights()]);
   await refreshDiary();
@@ -212,6 +190,17 @@ function bindEvents() {
     e.target.value = '';
   });
 
+  // Модель: показываем поле для своего названия, если выбрано «Другая»
+  els.setModel.addEventListener('change', () => {
+    els.modelCustomField.hidden = els.setModel.value !== '__custom';
+    if (els.setModel.value === '__custom') els.setModelCustom.focus();
+  });
+
+  // Вес: Enter в поле = «Записать»
+  els.weightInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addWeightHandler();
+  });
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (!els.sheetBackdrop.hidden) closeSheet();
@@ -262,7 +251,7 @@ function onActionClick(e) {
       break;
 
     case 'add':
-      openAddFlow(target.dataset.meal || '');
+      openAddFlow();
       break;
 
     case 'entry':
@@ -313,8 +302,12 @@ function onActionClick(e) {
     case 'portion':
       setPortion(Number(target.dataset.mult));
       break;
-    case 'meal-pick':
-      pickMeal(target.dataset.meal, target.dataset.group);
+
+    case 'add-weight':
+      addWeightHandler();
+      break;
+    case 'weight-del':
+      deleteWeight(id);
       break;
 
     case 'stats-range':
@@ -327,15 +320,6 @@ function onActionClick(e) {
 
     case 'theme':
       setTheme(target.dataset.val);
-      break;
-    case 'profile-sex':
-      setProfileSegment('sex', target.dataset.val);
-      break;
-    case 'profile-goal':
-      setProfileSegment('goal', target.dataset.val);
-      break;
-    case 'calc-norms':
-      calcNorms();
       break;
     case 'save-settings':
       saveSettingsHandler();
@@ -522,7 +506,7 @@ async function refreshDiary() {
 
   renderHero(state.entries);
   renderQuick();
-  renderMeals(state.entries);
+  renderEntries(state.entries);
 }
 
 function sumEntries(entries) {
@@ -612,40 +596,34 @@ function renderQuick() {
   `).join('');
 }
 
-/* ---------- Приёмы пищи ---------- */
+/* ---------- Список еды за день ---------- */
 
-function renderMeals(entries) {
+function renderEntries(entries) {
+  const count = els.entriesCount;
+  if (count) {
+    count.textContent = entries.length
+      ? entries.length + ' ' + plural(entries.length, 'запись', 'записи', 'записей')
+      : '';
+  }
+
   if (!entries.length) {
-    els.mealsList.innerHTML = `
+    els.entriesList.innerHTML = `
       <div class="empty">
         ${icon('bowl', 30)}
-        <p>На этот день записей нет.<br>Добавьте приём пищи или возьмите блюдо из быстрого добавления.</p>
+        <p>На этот день записей нет.<br>Добавьте еду или возьмите блюдо из быстрого добавления.</p>
       </div>`;
     return;
   }
 
-  const groups = MEALS.map((m) => ({
-    ...m,
-    items: entries.filter((e) => (MEAL_IDS.includes(e.meal) ? e.meal : 'snack') === m.id),
-  })).filter((g) => g.items.length);
+  els.entriesList.innerHTML = entries.map(entryHtml).join('');
+}
 
-  els.mealsList.innerHTML = groups.map((g) => {
-    const sum = sumEntries(g.items);
-    return `
-      <div class="meal-group">
-        <div class="meal-head">
-          <span class="meal-icon">${icon(g.icon, 18)}</span>
-          <h3>${g.label}</h3>
-          <button class="icon-btn sm" data-action="add" data-meal="${g.id}" aria-label="Добавить в ${g.label}">
-            ${icon('plus', 17)}
-          </button>
-          <span class="meal-sum">${fmtInt(sum.kcal)} ккал</span>
-        </div>
-        <div class="entries">
-          ${g.items.map(entryHtml).join('')}
-        </div>
-      </div>`;
-  }).join('');
+function plural(n, one, few, many) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
 }
 
 function entryHtml(e) {
@@ -831,16 +809,16 @@ function openFavEditor(id) {
     </label>
     <div class="grid-2">
       <label class="field"><span>Вес, г</span>
-        <input type="number" id="fav-weight" min="0" step="1" inputmode="decimal" value="${fav.weight || ''}">
+        <input type="text" id="fav-weight" inputmode="decimal" value="${fav.weight || ''}">
       </label>
       <label class="field"><span>Калории</span>
-        <input type="number" id="fav-kcal" min="0" step="1" inputmode="decimal" value="${fav.kcal || ''}">
+        <input type="text" id="fav-kcal" inputmode="decimal" value="${fav.kcal || ''}">
       </label>
     </div>
     <div class="grid-3">
-      <label class="field"><span>Белки</span><input type="number" id="fav-protein" min="0" step="0.1" inputmode="decimal" value="${fav.protein || ''}"></label>
-      <label class="field"><span>Жиры</span><input type="number" id="fav-fats" min="0" step="0.1" inputmode="decimal" value="${fav.fats || ''}"></label>
-      <label class="field"><span>Углеводы</span><input type="number" id="fav-carbs" min="0" step="0.1" inputmode="decimal" value="${fav.carbs || ''}"></label>
+      <label class="field"><span>Белки</span><input type="text" id="fav-protein" inputmode="decimal" value="${fav.protein || ''}"></label>
+      <label class="field"><span>Жиры</span><input type="text" id="fav-fats" inputmode="decimal" value="${fav.fats || ''}"></label>
+      <label class="field"><span>Углеводы</span><input type="text" id="fav-carbs" inputmode="decimal" value="${fav.carbs || ''}"></label>
     </div>
     <button class="btn primary block" data-action="fav-save" data-id="${fav.id}">Сохранить</button>
     <button class="btn danger block" style="margin-top:8px" data-action="fav-del" data-id="${fav.id}">Удалить из избранного</button>
@@ -895,7 +873,7 @@ function openQuickAdd(idx) {
   const item = state.quick[idx];
   if (!item) return;
 
-  quickCtx = { item, mult: 1, meal: defaultMeal() };
+  quickCtx = { item, mult: 1 };
 
   openSheet(`
     <div class="sheet-title">${escapeHtml(item.name)}</div>
@@ -906,15 +884,6 @@ function openQuickAdd(idx) {
       <div class="chips chips-tight" id="quick-portions">
         ${[0.5, 1, 1.5, 2].map((m) => `
           <button class="meal-chip ${m === 1 ? 'active' : ''}" data-action="portion" data-mult="${m}">${m === 1 ? 'Обычная' : String(m).replace('.', ',') + '×'}</button>
-        `).join('')}
-      </div>
-    </div>
-
-    <div class="field">
-      <span>Приём пищи</span>
-      <div class="chips chips-tight">
-        ${MEALS.map((m) => `
-          <button class="meal-chip ${m.id === quickCtx.meal ? 'active' : ''}" data-action="meal-pick" data-meal="${m.id}" data-group="quick">${m.label}</button>
         `).join('')}
       </div>
     </div>
@@ -940,31 +909,11 @@ function setPortion(mult) {
   if (total) total.textContent = fmtInt(quickCtx.item.kcal * mult) + ' ккал';
 }
 
-function pickMeal(meal, group) {
-  if (group === 'quick' && quickCtx) {
-    quickCtx.meal = meal;
-    document.querySelectorAll('[data-group="quick"]').forEach((b) => {
-      b.classList.toggle('active', b.dataset.meal === meal);
-    });
-    return;
-  }
-  if (group === 'capture') {
-    state.meal = meal;
-    renderMealChips(els.captureMeals, meal);
-    return;
-  }
-  if (group === 'result') {
-    state.meal = meal;
-    renderMealChips(els.resMeals, meal);
-  }
-}
-
 async function quickAdd() {
   if (!quickCtx) return;
-  const { item, mult, meal } = quickCtx;
+  const { item, mult } = quickCtx;
   const entry = {
     name: item.name,
-    meal,
     description: item.description || '',
     weight: Math.round(num(item.weight) * mult),
     kcal: Math.round(num(item.kcal) * mult),
@@ -980,7 +929,7 @@ async function quickAdd() {
   try {
     await DBAddEntry(entry);
     await refreshDiary();
-    showToast('Добавлено · ' + mealLabel(meal).toLowerCase());
+    showToast('Добавлено в дневник');
   } catch (e) {
     showToast('Не удалось добавить');
   }
@@ -990,22 +939,20 @@ async function quickAdd() {
    Добавление / редактирование записи
    ============================================================ */
 
-function openAddFlow(meal) {
+function openAddFlow() {
   state.editingId = null;
   state.draft = { image: '', description: '' };
-  state.meal = meal && MEAL_IDS.includes(meal) ? meal : defaultMeal();
   state.per100 = null;
   state.lastKcal = 0;
   state.favToggle = false;
 
-  els.captureTitle.textContent = 'Новый приём пищи';
+  els.captureTitle.textContent = 'Новая запись';
   els.resultTitle.textContent = 'Результат';
   els.saveResultLabel.textContent = 'Сохранить в дневник';
 
   resetPhoto();
   els.addDescription.value = '';
   els.descCount.textContent = '0 / 300';
-  renderMealChips(els.captureMeals, state.meal);
   updateAnalyzeButton();
 
   els.overlay.hidden = false;
@@ -1067,15 +1014,6 @@ function updateAnalyzeButton() {
   els.btnAnalyze.disabled = !hasImage && !hasText;
 }
 
-function renderMealChips(container, active) {
-  if (!container) return;
-  container.innerHTML = MEALS.map((m) => `
-    <button class="meal-chip ${m.id === active ? 'active' : ''}"
-      data-action="meal-pick" data-meal="${m.id}" data-group="${container.id === 'res-meals' ? 'result' : 'capture'}">
-      ${m.label}
-    </button>`).join('');
-}
-
 /* ---------- Анализ ---------- */
 
 const LOADING_HINTS = [
@@ -1123,8 +1061,6 @@ async function analyze() {
       description,
       apiKey: state.settings.openrouterKey,
       model: state.settings.model,
-      profile: state.settings.profile,
-      normKcal: state.settings.kcal,
     });
 
     state.draft.result = result;
@@ -1164,8 +1100,6 @@ async function refine() {
       description: state.draft.description,
       apiKey: state.settings.openrouterKey,
       model: state.settings.model,
-      profile: state.settings.profile,
-      normKcal: state.settings.kcal,
       previous: state.draft.result,
       correction,
     });
@@ -1212,7 +1146,6 @@ function fillResult(result, opts) {
     ? 'Редактируем запись за ' + formatDateShort(state.currentDate)
     : (isToday ? 'Будет добавлено: сегодня' : 'Будет добавлено: ' + formatDateShort(state.currentDate));
 
-  renderMealChips(els.resMeals, state.meal);
   updateFavToggle();
 
   if (opts && opts.fresh) {
@@ -1232,9 +1165,16 @@ function renderComponents(list, notes) {
       <div class="components-title">Из чего сложилось · ${fmtInt(total)} ккал</div>
       ${list.map((c) => `
         <div class="comp">
-          <span class="comp-name">${escapeHtml(c.name)}</span>
-          <span class="comp-grams">${Math.round(c.grams)} г</span>
-          <span class="comp-kcal">${fmtInt(c.kcal)}</span>
+          <div class="comp-top">
+            <span class="comp-name">${escapeHtml(c.name)}</span>
+            <span class="comp-kcal">${fmtInt(c.kcal)} ккал</span>
+          </div>
+          <div class="comp-macros">
+            <span>${Math.round(c.grams)} г</span>
+            <span><i class="dot dot-protein"></i>Б ${fmt1(c.protein)}</span>
+            <span><i class="dot dot-fats"></i>Ж ${fmt1(c.fats)}</span>
+            <span><i class="dot dot-carbs"></i>У ${fmt1(c.carbs)}</span>
+          </div>
         </div>`).join('')}` : ''}
     ${notes ? `<p class="comp-note">${escapeHtml(notes)}</p>` : ''}
   `;
@@ -1351,7 +1291,6 @@ async function saveResult() {
 
     const entry = {
       name,
-      meal: state.meal,
       description: (els.resDesc.value || '').trim(),
       weight: Math.round(num(els.resWeight.value)),
       kcal: Math.round(kcal),
@@ -1421,7 +1360,6 @@ async function openEditEntry(id) {
   if (!entry) return;
 
   state.editingId = id;
-  state.meal = MEAL_IDS.includes(entry.meal) ? entry.meal : defaultMeal();
   state.draft = {
     image: entry.image || '',
     description: entry.description || '',
@@ -1532,17 +1470,19 @@ function renderWeightStats() {
 
   if (!list.length) {
     sub.textContent = 'нет данных';
-    box.innerHTML = '<p class="hint" style="margin:0">Запишите вес в настройках — появится график.</p>';
+    box.innerHTML = '<p class="hint" style="margin:0">Запишите вес ниже — появится график.</p>';
+    renderWeightList();
     return;
   }
 
-  const first = list[0].weight;
-  const last = list[list.length - 1].weight;
+  const first = num(list[0].weight);
+  const last = num(list[list.length - 1].weight);
   const diff = last - first;
   sub.textContent = fmt1(last) + ' кг' + (list.length > 1 ? ' · ' + (diff > 0 ? '+' : '') + fmt1(diff) + ' кг' : '');
 
   if (list.length < 2) {
-    box.innerHTML = '<p class="hint" style="margin:0">Добавьте ещё одну запись веса, чтобы увидеть динамику.</p>';
+    box.innerHTML = '<p class="hint" style="margin:0">Добавьте ещё одну запись, чтобы увидеть динамику.</p>';
+    renderWeightList();
     return;
   }
 
@@ -1563,6 +1503,62 @@ function renderWeightStats() {
       <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2.5"
         stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
     </svg>`;
+
+  renderWeightList();
+}
+
+function renderWeightList() {
+  if (!els.weightList) return;
+  const list = state.weights.slice(0, 6);
+
+  if (!list.length) {
+    els.weightList.innerHTML = '<p class="weight-empty">Записей пока нет</p>';
+    return;
+  }
+
+  els.weightList.innerHTML = list.map((w) => `
+    <div class="weight-row">
+      <span class="weight-row-date">${formatDateShort(w.date || todayStr())}</span>
+      <span class="weight-row-val">${fmt1(w.weight)}<em>кг</em></span>
+      <button class="weight-row-del" data-action="weight-del" data-id="${w.id}" aria-label="Удалить запись">
+        ${icon('x', 14)}
+      </button>
+    </div>`).join('');
+}
+
+async function addWeightHandler() {
+  const value = num(els.weightInput.value);
+  if (!value) {
+    showToast('Введите вес в килограммах');
+    els.weightInput.focus();
+    return;
+  }
+  if (value < 20 || value > 400) {
+    showToast('Вес должен быть в диапазоне 20–400 кг');
+    els.weightInput.focus();
+    return;
+  }
+
+  try {
+    await DBAddWeight({ weight: r1(value), date: todayStr(), createdAt: Date.now() });
+    els.weightInput.value = '';
+    await loadWeights();
+    renderWeightStats();
+    showToast('Вес записан');
+  } catch (e) {
+    showToast('Не удалось сохранить вес');
+  }
+}
+
+async function deleteWeight(id) {
+  try {
+    await DBDeleteWeight(id);
+    await loadWeights();
+    renderWeightStats();
+    showToast('Запись веса удалена');
+  } catch (e) {
+    showToast('Не удалось удалить');
+  }
 }
 
 /* ============================================================
@@ -1571,22 +1567,24 @@ function renderWeightStats() {
 
 function fillSettingsForm() {
   const s = state.settings;
-  const p = s.profile || {};
 
-  els.setAge.value = p.age || '';
-  els.setHeight.value = p.height || '';
-  els.setWeight.value = p.weight || '';
-  els.setActivity.value = String(p.activity || 1.55);
   els.setCal.value = s.kcal || '';
   els.setProtein.value = s.protein || '';
   els.setFats.value = s.fats || '';
   els.setCarbs.value = s.carbs || '';
   els.setApiKey.value = s.openrouterKey || '';
-  els.setModel.value = s.model || '';
 
-  markSegments('#seg-sex', p.sex || 'm');
-  markSegments('#seg-goal', p.goal || 'maintain');
+  fillModelSelect(s.model || '');
   markSegments('#seg-theme', s.theme || 'system');
+}
+
+/** Селект моделей: известные варианты + «другая» */
+function fillModelSelect(model) {
+  const known = Array.from(els.setModel.options).map((o) => o.value).filter((v) => v !== '__custom');
+  const isKnown = known.includes(model);
+  els.setModel.value = isKnown ? model : '__custom';
+  els.setModelCustom.value = isKnown ? '' : model;
+  els.modelCustomField.hidden = isKnown;
 }
 
 function markSegments(selector, value) {
@@ -1595,48 +1593,11 @@ function markSegments(selector, value) {
   });
 }
 
-function setProfileSegment(field, value) {
-  state.settings.profile = { ...state.settings.profile, [field]: value };
-  saveSettings(state.settings);
-  markSegments(field === 'sex' ? '#seg-sex' : '#seg-goal', value);
-}
-
-function calcNorms() {
-  const p = {
-    sex: state.settings.profile.sex || 'm',
-    age: num(els.setAge.value) || 25,
-    height: num(els.setHeight.value) || 175,
-    weight: num(els.setWeight.value) || 75,
-    activity: num(els.setActivity.value) || 1.55,
-    goal: state.settings.profile.goal || 'maintain',
-  };
-
-  if (p.weight < 25 || p.height < 120) {
-    showToast('Проверьте вес и рост');
-    return;
-  }
-
-  // Миффлин–Сан Жеор
-  const base = 10 * p.weight + 6.25 * p.height - 5 * p.age + (p.sex === 'f' ? -161 : 5);
-  const tdee = base * p.activity;
-  const kcal = Math.round((tdee * (p.goal === 'cut' ? 0.8 : p.goal === 'bulk' ? 1.12 : 1)) / 10) * 10;
-
-  const proteinPerKg = p.goal === 'cut' ? 2.2 : p.goal === 'bulk' ? 1.9 : 1.8;
-  const fatPerKg = p.goal === 'cut' ? 0.8 : 0.9;
-
-  const protein = Math.round(p.weight * proteinPerKg);
-  const fats = Math.round(p.weight * fatPerKg);
-  const carbs = Math.max(0, Math.round((kcal - protein * 4 - fats * 9) / 4));
-
-  els.setCal.value = kcal;
-  els.setProtein.value = protein;
-  els.setFats.value = fats;
-  els.setCarbs.value = carbs;
-
-  state.settings.profile = p;
-  saveSettings(state.settings);
-
-  showToast('Норма рассчитана — проверьте и сохраните');
+/** Что реально сохранено в настройках: модель из селекта или своё название */
+function readModelValue() {
+  const v = els.setModel.value;
+  if (v === '__custom') return (els.setModelCustom.value || '').trim() || 'google/gemini-2.5-flash';
+  return v || 'google/gemini-2.5-flash';
 }
 
 function saveSettingsHandler() {
@@ -1654,14 +1615,7 @@ function saveSettingsHandler() {
     fats: Math.round(num(els.setFats.value)),
     carbs: Math.round(num(els.setCarbs.value)),
     openrouterKey: (els.setApiKey.value || '').trim(),
-    model: (els.setModel.value || '').trim() || 'google/gemini-2.5-flash',
-    profile: {
-      ...state.settings.profile,
-      age: num(els.setAge.value) || state.settings.profile.age,
-      height: num(els.setHeight.value) || state.settings.profile.height,
-      weight: num(els.setWeight.value) || state.settings.profile.weight,
-      activity: num(els.setActivity.value) || state.settings.profile.activity,
-    },
+    model: readModelValue(),
   };
 
   saveSettings(state.settings);

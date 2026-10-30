@@ -499,42 +499,9 @@ em { font-style: normal; }
   color: var(--accent);
 }
 
-/* ---------- Приёмы пищи ---------- */
+/* ---------- Список еды ---------- */
 
-.meals { display: flex; flex-direction: column; gap: 18px; margin-top: 22px; }
-
-.meal-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 2px 8px;
-}
-.meal-icon {
-  width: 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
-  color: var(--text-3);
-}
-.meal-head h3 {
-  font-size: 0.92rem;
-  font-weight: 700;
-  flex: 0 1 auto;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.meal-sum {
-  margin-left: auto;
-  font-size: 0.8rem;
-  font-weight: 650;
-  color: var(--text-2);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
+.entries-block { margin-top: 22px; }
 .entries { display: flex; flex-direction: column; gap: 8px; }
 
 .entry {
@@ -1047,23 +1014,48 @@ em { font-style: normal; }
 
 .components { display: flex; flex-direction: column; gap: 1px; margin-bottom: 16px; }
 .comp {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
   padding: 9px 0;
   border-bottom: 1px solid var(--border);
-  font-size: 0.82rem;
 }
-.comp:last-child { border-bottom: 0; }
+.comp:last-of-type { border-bottom: 0; }
+
+.comp-top {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
 .comp-name {
   flex: 1;
   min-width: 0;
+  font-size: 0.84rem;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.comp-grams { color: var(--text-3); font-size: 0.76rem; white-space: nowrap; }
-.comp-kcal { font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.comp-kcal {
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.comp-macros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 3px;
+  font-size: 0.74rem;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.comp-macros > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.comp-macros .dot { width: 5px; height: 5px; }
 
 .components-title {
   font-size: 0.78rem;
@@ -1314,6 +1306,81 @@ em { font-style: normal; }
 
 .spark { height: 70px; display: flex; align-items: center; }
 .spark svg { width: 100%; height: 100%; overflow: visible; }
+
+.weight-input-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.weight-input-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 13px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.weight-input-row input:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.weight-input-row .btn { flex-shrink: 0; }
+
+.weight-list { margin-top: 8px; }
+
+.weight-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--border);
+}
+.weight-row-date {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.84rem;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.weight-row-val {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.weight-row-val em {
+  font-style: normal;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-left: 3px;
+}
+.weight-row-del {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+.weight-row-del:active { background: var(--danger-soft); color: var(--danger); }
+
+.weight-empty {
+  text-align: center;
+  color: var(--text-3);
+  font-size: 0.8rem;
+  padding: 12px 0 2px;
+}
 
 /* ---------- Разное ---------- */
 

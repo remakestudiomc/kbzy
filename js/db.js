@@ -153,15 +153,6 @@ async function DBDeleteWeight(id) {
 
 /* ---------- Настройки ---------- */
 
-const DEFAULT_PROFILE = {
-  sex: 'm',
-  age: 25,
-  height: 180,
-  weight: 80,
-  activity: 1.55,
-  goal: 'maintain', // cut | maintain | bulk
-};
-
 const DEFAULT_SETTINGS = {
   kcal: 2400,
   protein: 160,
@@ -170,21 +161,16 @@ const DEFAULT_SETTINGS = {
   openrouterKey: '',
   model: 'google/gemini-2.5-flash',
   theme: 'system', // system | light | dark
-  profile: { ...DEFAULT_PROFILE },
 };
 
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { ...DEFAULT_SETTINGS, profile: { ...DEFAULT_PROFILE } };
+    if (!raw) return { ...DEFAULT_SETTINGS };
     const parsed = JSON.parse(raw) || {};
-    return {
-      ...DEFAULT_SETTINGS,
-      ...parsed,
-      profile: { ...DEFAULT_PROFILE, ...(parsed.profile || {}) },
-    };
+    return { ...DEFAULT_SETTINGS, ...parsed };
   } catch (e) {
-    return { ...DEFAULT_SETTINGS, profile: { ...DEFAULT_PROFILE } };
+    return { ...DEFAULT_SETTINGS };
   }
 }
 

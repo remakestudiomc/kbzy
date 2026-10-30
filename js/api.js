@@ -26,10 +26,8 @@ const REQUEST_TIMEOUT = 90000;
  * @param {string} [opts.description]  описание словами
  * @param {string} opts.apiKey
  * @param {string} [opts.model]
- * @param {Object} [opts.profile]      профиль пользователя (пол, возраст, рост, вес, цель)
  * @param {Object} [opts.previous]     предыдущий результат (для уточнения)
  * @param {string} [opts.correction]   поправка пользователя
- * @param {number} [opts.normKcal]     дневная норма — контекст для модели
  * @returns {Promise<Object>}
  */
 async function analyzeFood(opts) {
@@ -60,8 +58,6 @@ async function analyzeFood(opts) {
   const prompt = buildPrompt({
     description,
     hasImage,
-    profile: opts.profile,
-    normKcal: opts.normKcal,
     previous: opts.previous,
     correction: opts.correction,
   });
@@ -133,33 +129,13 @@ async function requestCompletion({ prompt, image, apiKey, model }) {
    Промпт
    ============================================================ */
 
-const GOAL_RU = { cut: 'похудение (дефицит)', maintain: 'поддержание веса', bulk: 'набор массы (профицит)' };
-
-function describeProfile(profile, normKcal) {
-  if (!profile) return '';
-  const parts = [];
-  if (profile.sex) parts.push(profile.sex === 'f' ? 'женщина' : 'мужчина');
-  if (profile.age) parts.push(profile.age + ' лет');
-  if (profile.height) parts.push('рост ' + profile.height + ' см');
-  if (profile.weight) parts.push('вес ' + profile.weight + ' кг');
-  if (profile.goal) parts.push('цель — ' + (GOAL_RU[profile.goal] || profile.goal));
-  if (!parts.length) return '';
-
-  let line = 'ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ: ' + parts.join(', ') + '.';
-  if (normKcal) line += ' Дневная норма ~' + Math.round(normKcal) + ' ккал.';
-  line += ' Порции оценивай как для взрослого человека такого телосложения, если на фото нет явных признаков другого.';
-  return line;
-}
-
-function buildPrompt({ description, hasImage, profile, normKcal, previous, correction }) {
-  const profileLine = describeProfile(profile, normKcal);
-
+function buildPrompt({ description, hasImage, previous, correction }) {
   const descBlock = description
     ? '\nОПИСАНИЕ ОТ ПОЛЬЗОВАТЕЛЯ (доверяй ему больше, чем догадкам по фото): «' + description + '»'
     : '';
 
   const source = hasImage
-    ? 'У тебя есть фото приёма пищи.' + (description ? ' И описание.' : '')
+    ? 'У тебя есть фото еды.' + (description ? ' И описание.' : '')
     : 'Фото нет — только текстовое описание блюда.';
 
   const correctionBlock = correction
@@ -178,9 +154,7 @@ function buildPrompt({ description, hasImage, profile, normKcal, previous, corre
         : 'Учти поправку в расчёте.')
     : '';
 
-  return `Ты — спортивный нутрициолог. Считаешь КБЖУ приёма пищи для дневника питания. Отвечай по-русски.
-
-${profileLine}
+  return `Ты — спортивный нутрициолог. Считаешь КБЖУ блюда для дневника питания. Отвечай по-русски.
 
 ${source}${descBlock}
 
@@ -199,7 +173,7 @@ ${source}${descBlock}
 Если на фото нет еды — верни {"result":false}.${correctionBlock}`;
 }
 
-const SIMPLE_PROMPT = 'Определи КБЖУ этого приёма пищи по фото и/или описанию. Верни строго валидный JSON без markdown: {"result": true, "name": "Название", "weight": 250, "kcal": 350, "protein": 15.5, "fats": 12, "carbs": 40.2, "confidence": 0.7, "components": [], "notes": ""}. Если еды нет — {"result": false}.';
+const SIMPLE_PROMPT = 'Определи КБЖУ этой еды по фото и/или описанию. Верни строго валидный JSON без markdown: {"result": true, "name": "Название", "weight": 250, "kcal": 350, "protein": 15.5, "fats": 12, "carbs": 40.2, "confidence": 0.7, "components": [], "notes": ""}. Если еды нет — {"result": false}.';
 
 /* ============================================================
    Разбор ответа
