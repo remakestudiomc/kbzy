@@ -12,18 +12,19 @@
   --surface-2: #eceef2;
   --surface-3: #e2e5ea;
   --text: #0b0d10;
-  --text-2: #616973;
-  --text-3: #98a0aa;
+  --text-2: #4b5563;
+  --text-3: #646b76;
   --border: rgba(11, 13, 16, 0.08);
   --border-strong: rgba(11, 13, 16, 0.14);
   --accent: #e2a825;
+  --accent-text: #8a5f00; /* тот же акцент, но читаемый как текст */
   --accent-ink: #1b1403;
   --accent-soft: rgba(226, 168, 37, 0.14);
   --protein: #4b84f0;
   --fats: #e08a2b;
   --carbs: #22a06b;
-  --danger: #e5484d;
-  --danger-soft: rgba(229, 72, 77, 0.1);
+  --danger: #d92d20;
+  --danger-soft: rgba(217, 45, 32, 0.1);
   --ok: #22a06b;
   --shadow-card: 0 1px 2px rgba(11, 13, 16, 0.04), 0 12px 28px -18px rgba(11, 13, 16, 0.25);
   --shadow-float: 0 8px 24px -6px rgba(11, 13, 16, 0.24);
@@ -41,11 +42,12 @@
   --surface-2: #1c1f24;
   --surface-3: #262a31;
   --text: #f3f4f6;
-  --text-2: #9aa1ab;
-  --text-3: #6d747e;
+  --text-2: #b3b9c2;
+  --text-3: #8a919b;
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
   --accent: #f2c14e;
+  --accent-text: #f2c14e;
   --accent-ink: #171204;
   --accent-soft: rgba(242, 193, 78, 0.14);
   --protein: #6aa1ff;
@@ -399,10 +401,17 @@ em { font-style: normal; }
 }
 .section-head h2 { font-size: 0.95rem; font-weight: 700; }
 
+.section-sub {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
 .text-btn {
   font-size: 0.82rem;
   font-weight: 650;
-  color: var(--accent);
+  color: var(--accent-text);
   padding: 4px 2px;
   flex-shrink: 0;
 }
@@ -496,7 +505,7 @@ em { font-style: normal; }
 .meal-chip.active {
   background: var(--accent-soft);
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* ---------- Список еды ---------- */
@@ -784,7 +793,7 @@ em { font-style: normal; }
   border-radius: var(--r-md);
   transition: color 0.15s ease;
 }
-.tab.active { color: var(--accent); }
+.tab.active { color: var(--accent-text); }
 
 .tab-add {
   flex: 0 0 auto;

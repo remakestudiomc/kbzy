@@ -175,7 +175,13 @@ function loadSettings() {
 }
 
 function saveSettings(settings) {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  // В приватном режиме Safari и при переполнении setItem бросает исключение —
+  // настройки просто не сохранятся, но приложение не должно падать
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch (e) {
+    console.warn('Не удалось сохранить настройки:', e);
+  }
 }
 
 async function clearAllData() {

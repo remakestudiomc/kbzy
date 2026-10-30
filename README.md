@@ -88,3 +88,20 @@ python scripts/verify.py
 ```
 
 `verify.py` проверяет структуру, манифест, размеры иконок, соответствие `id` в разметке и коде, наличие обработчиков для кнопок `data-action` и отсутствие ключей в исходниках.
+
+### E2E-тесты в браузере
+
+`scripts/e2e-tests.js` — 147 проверок: логика расчётов, CRUD, избранное, даты, статистика, вес, настройки, экспорт/импорт, XSS, доступность, переполнение вёрстки, ошибки сети, производительность.
+
+```bash
+python -m http.server 8099 --bind 127.0.0.1
+
+playwright-cli open "http://127.0.0.1:8099/index.html"
+playwright-cli eval "async () => {
+  const src = await (await fetch('/scripts/e2e-tests.js')).text();
+  (0, eval)(src);
+  const a = await window.__runTests();
+  const b = await window.__runExtraTests();
+  return JSON.stringify({ main: a.passed + '/' + a.total, extra: b.passed + '/' + b.total, fails: [...a.failed, ...b.failed] });
+}"
+```

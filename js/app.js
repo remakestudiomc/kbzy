@@ -8,9 +8,10 @@ const num = (v) => {
   return isNaN(n) ? 0 : n;
 };
 const r1 = (n) => Math.round(n * 10) / 10;
-const fmtInt = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u2009');
+// num() внутри — иначе старая запись без поля даёт «NaN» в интерфейсе
+const fmtInt = (n) => String(Math.round(num(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '\u2009');
 const fmt1 = (n) => {
-  const v = r1(n);
+  const v = r1(num(n));
   return Number.isInteger(v) ? String(v) : v.toFixed(1).replace('.', ',');
 };
 

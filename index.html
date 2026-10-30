@@ -142,7 +142,7 @@
       <div class="spark" id="stats-spark"></div>
       <div class="weight-input-row">
         <input type="text" id="weight-input" placeholder="Ваш вес, кг" inputmode="decimal"
-          autocomplete="off">
+          autocomplete="off" aria-label="Вес в килограммах">
         <button class="btn primary" data-action="add-weight">Записать</button>
       </div>
       <div class="weight-list" id="weight-list"></div>
@@ -158,7 +158,7 @@
       <div class="card-head"><h2>Дневная норма</h2></div>
       <div class="field">
         <span>Калории, ккал</span>
-        <input type="text" id="set-cal" inputmode="numeric">
+        <input type="text" id="set-cal" inputmode="numeric" aria-label="Дневная норма калорий">
       </div>
       <div class="grid-3">
         <label class="field"><span>Белки</span>
@@ -188,7 +188,7 @@
       <div class="field">
         <span>API-ключ OpenRouter</span>
         <div class="input-row">
-          <input type="password" id="set-api-key" placeholder="sk-or-v1-…" autocomplete="off" spellcheck="false">
+          <input type="password" id="set-api-key" placeholder="sk-or-v1-…" autocomplete="off" spellcheck="false" aria-label="API-ключ OpenRouter">
           <button class="icon-btn soft" id="btn-toggle-key" data-action="toggle-key" aria-label="Показать ключ">
             <i data-icon="eye" data-size="18"></i>
           </button>
