@@ -43,7 +43,7 @@
         </button>
         <button class="icon-btn nav-arrow" id="btn-next-day" aria-label="Следующий день">›</button>
       </div>
-      <input type="date" id="date-picker" class="hidden" tabindex="-1">
+      <input type="date" id="date-picker" class="visually-hidden" tabindex="-1">
     </header>
 
     <div class="screen-body">
@@ -63,7 +63,7 @@
         <div class="hero-info">
           <div class="hero-goal">
             <span class="hero-goal-label">Цель</span>
-            <button class="hero-goal-value" id="btn-date2"> <span id="kcal-goal">2000</span> ккал</button>
+            <button class="hero-goal-value" id="btn-edit-goal" aria-label="Изменить дневную норму калорий"><span id="kcal-goal">2000</span> ккал</button>
           </div>
           <div class="hero-remain" id="kcal-remain">осталось 2000</div>
           <div class="hero-progress">
@@ -314,7 +314,10 @@
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast">
+    <span class="toast-text" id="toast-text"></span>
+    <button class="toast-action hidden" id="toast-action" type="button">Отменить</button>
+  </div>
 </div>
 
 <script src="js/db.js"></script>

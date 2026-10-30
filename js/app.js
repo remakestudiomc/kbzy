@@ -25,6 +25,7 @@ const els = {
   // Экраны
   screens: document.querySelectorAll('.screen'),
   navBtns: document.querySelectorAll('.nav-btn'),
+  screenDiary: $('screen-diary'),
 
   // Бренд / шапка
 
@@ -40,6 +41,7 @@ const els = {
   kcalBar: $('kcal-bar'),
   kcalRing: $('kcal-ring'),
   kcalRemain: $('kcal-remain'),
+  btnEditGoal: $('btn-edit-goal'),
   proteinNow: $('protein-now'),
   proteinGoal: $('protein-goal'),
   proteinBar: $('protein-bar'),
@@ -117,6 +119,8 @@ const els = {
 
   // Тост
   toast: $('toast'),
+  toastText: $('toast-text'),
+  toastAction: $('toast-action'),
 };
 
 /* ============================================================
@@ -154,15 +158,18 @@ function bindEvents() {
   els.btnAddSimple.addEventListener('click', openAddFlow);
 
   // Даты
-  els.btnPrevDay.addEventListener('click', () => { state.currentDate = addDays(state.currentDate, -1); refreshDiary(); });
-  els.btnNextDay.addEventListener('click', () => { state.currentDate = addDays(state.currentDate, 1); refreshDiary(); });
-  els.btnDate.addEventListener('click', () => els.datePicker.showPicker());
+  els.btnPrevDay.addEventListener('click', () => changeDay(-1));
+  els.btnNextDay.addEventListener('click', () => changeDay(1));
+  els.btnDate.addEventListener('click', openDatePicker);
   els.datePicker.addEventListener('change', () => {
     if (els.datePicker.value) {
       state.currentDate = els.datePicker.value;
       refreshDiary();
     }
   });
+  els.btnEditGoal.addEventListener('click', goToGoalSettings);
+
+  bindSwipe();
 
   // Ввод фото
   els.btnTakePhoto.addEventListener('click', () => els.cameraInput.click());
@@ -198,9 +205,17 @@ function bindEvents() {
     if (e.target === els.overlayAdd) closeFlow();
   });
 
-  // Закрытие по Escape
+  // Закрытие по Escape + стрелки для переключения дней
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeFlow();
+    if (e.key === 'Escape') {
+      closeFlow();
+      return;
+    }
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    if (!els.overlayAdd.classList.contains('hidden')) return;
+    const tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+    changeDay(e.key === 'ArrowLeft' ? -1 : 1);
   });
   window.addEventListener('popstate', (e) => {
     if (!els.overlayAdd.classList.contains('hidden')) {
@@ -248,6 +263,80 @@ function switchScreen(screenId) {
    Дневник
    ============================================================ */
 
+/**
+ * Переход на другой день. Вперёд дальше сегодняшнего дня не пускаем —
+ * в дневнике питания будущие дни пустые и только мешают.
+ */
+function changeDay(delta) {
+  const next = addDays(state.currentDate, delta);
+  if (next > todayStr()) {
+    showToast('Записи в будущем не ведутся');
+    return;
+  }
+  state.currentDate = next;
+  refreshDiary();
+}
+
+function updateDateNav() {
+  const isToday = state.currentDate >= todayStr();
+  els.btnNextDay.disabled = isToday;
+  els.btnNextDay.setAttribute('aria-disabled', isToday ? 'true' : 'false');
+}
+
+/** Системный календарь. showPicker() требует, чтобы элемент был отрисован. */
+function openDatePicker() {
+  const picker = els.datePicker;
+  if (typeof picker.showPicker === 'function') {
+    try {
+      picker.showPicker();
+      return;
+    } catch (e) {
+      /* ниже — запасной вариант для браузеров без поддержки */
+    }
+  }
+  picker.focus();
+  picker.click();
+}
+
+/** Кнопка «Цель» в шапке — сразу к полю нормы калорий */
+function goToGoalSettings() {
+  switchScreen('screen-settings');
+  setTimeout(() => {
+    els.setCal.focus();
+    els.setCal.select();
+    els.setCal.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, 120);
+}
+
+/** Свайп влево/вправо по дневнику — соседние дни */
+function bindSwipe() {
+  let startX = 0;
+  let startY = 0;
+  let tracking = false;
+
+  els.screenDiary.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) { tracking = false; return; }
+    if (e.target.closest('.favorites-scroll, input, textarea, select')) { tracking = false; return; }
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    tracking = true;
+  }, { passive: true });
+
+  els.screenDiary.addEventListener('touchcancel', () => { tracking = false; }, { passive: true });
+
+  els.screenDiary.addEventListener('touchend', (e) => {
+    if (!tracking) return;
+    tracking = false;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+    const dx = touch.clientX - startX;
+    const dy = touch.clientY - startY;
+    // Горизонтальный жест должен быть заметно длиннее вертикального
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+    changeDay(dx < 0 ? 1 : -1);
+  }, { passive: true });
+}
+
 async function refreshDiary() {
   const dateStr = state.currentDate;
   const isToday = dateStr === todayStr();
@@ -255,6 +344,7 @@ async function refreshDiary() {
   els.dateTitle.textContent = isToday ? 'Сегодня' : formatDateRu(dateStr).split(',')[0];
   els.dateSub.textContent = formatDateRu(dateStr);
   els.datePicker.value = dateStr;
+  updateDateNav();
 
   applySettingsToUI();
 
@@ -306,11 +396,12 @@ function renderTotals(entries) {
   setBar(els.fatsBar, totals.fats, s.fats);
   setBar(els.carbsBar, totals.carbs, s.carbs);
 
-  // Кольцевой прогресс калорий
-  const pct = s.kcal > 0 ? Math.min(totals.kcal / s.kcal, 1) : 0;
+  // Кольцевой прогресс калорий (кольцо заполняется до 100%, цвет — по факту)
+  const ratio = s.kcal > 0 ? totals.kcal / s.kcal : 0;
+  const pct = Math.min(ratio, 1);
   const CIRC = 326.7;
   els.kcalRing.style.strokeDashoffset = CIRC - CIRC * pct;
-  els.kcalRing.style.stroke = pct > 1 ? '#ef4444' : '#d4a017';
+  els.kcalRing.style.stroke = ratio > 1 ? '#ef4444' : '#d4a017';
 }
 
 function animateNumber(el, target) {
@@ -372,7 +463,6 @@ function renderEntries(entries) {
           ${entry.description ? `<div class="entry-desc">${escapeHtml(entry.description)}</div>` : ''}
         </div>
         <div class="entry-kcal">${Math.round(entry.kcal || 0)} ккал</div>
-        <button class="entry-del" data-action="del" aria-label="Удалить">✕</button>
       </div>
       <div class="entry-macros">
         <span><b>${fmt(entry.protein)}</b> г белков</span>
@@ -426,13 +516,41 @@ function escapeHtml(str) {
 }
 
 async function deleteEntry(id) {
-  if (!confirm('Удалить запись?')) return;
+  // Снимок записи нужен, чтобы можно было вернуть её кнопкой «Отменить»
+  let entry = null;
+  try {
+    const all = await DBGetAllEntries();
+    entry = all.find((e) => e.id === id) || null;
+  } catch (e) { /* без снимка просто удалим */ }
+
   try {
     await DBDeleteEntry(id);
-    showToast('🗑 Запись удалена');
     refreshDiary();
+
+    if (!entry) {
+      showToast('🗑 Запись удалена');
+      return;
+    }
+    showToast('🗑 Запись удалена', {
+      actionLabel: 'Отменить',
+      duration: 6000,
+      onAction: () => restoreEntry(entry),
+    });
   } catch (e) {
     showToast('⚠️ Не удалось удалить');
+  }
+}
+
+async function restoreEntry(entry) {
+  const copy = { ...entry };
+  delete copy.id;
+  try {
+    await DBAddEntry(copy);
+    state.currentDate = copy.date || state.currentDate;
+    refreshDiary();
+    showToast('↩️ Запись восстановлена');
+  } catch (e) {
+    showToast('⚠️ Не удалось восстановить');
   }
 }
 
@@ -989,11 +1107,31 @@ async function checkKeyHandler() {
    Тост
    ============================================================ */
 
-function showToast(message) {
-  els.toast.textContent = message;
+function showToast(message, options) {
+  const opts = options || {};
+  els.toastText.textContent = message;
+
+  if (opts.actionLabel && typeof opts.onAction === 'function') {
+    els.toastAction.textContent = opts.actionLabel;
+    els.toastAction.classList.remove('hidden');
+    els.toastAction.onclick = () => {
+      hideToast();
+      opts.onAction();
+    };
+  } else {
+    els.toastAction.classList.add('hidden');
+    els.toastAction.onclick = null;
+  }
+
   els.toast.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => els.toast.classList.remove('show'), 2800);
+  const duration = opts.duration || (opts.actionLabel ? 6000 : 2800);
+  toastTimer = setTimeout(hideToast, duration);
+}
+
+function hideToast() {
+  clearTimeout(toastTimer);
+  els.toast.classList.remove('show');
 }
 
 /* ============================================================
